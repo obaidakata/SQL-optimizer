@@ -1,7 +1,7 @@
 class SqlOptimizer:
     m_Schema = {}
     m_LegalOperators = []
-    m_QueryTree = None
+    m_QueryTree = []
 
     def __init__(self):
         self.InitSchema()
@@ -14,7 +14,12 @@ class SqlOptimizer:
         self.m_LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
 
     def Print(self):
-        print("hello")
+        print(self.m_QueryTree[0], end="")
+        for x in self.m_QueryTree[1:]:
+            print("(", x, sep="", end="")
+
+        for i in self.m_QueryTree[1:]:
+            print(")", sep="", end="")
 
     def Optimize(self, i_Query):
         m_QueryTree = self.buildTree(i_Query)
@@ -35,8 +40,8 @@ class SqlOptimizer:
         selectSubQuery = selectSubQuery[0].strip()
         pi = "PI[{0}]".format(selectSubQuery)
 
-        logicalQueryPlan = "{0}({1}({2}))".format(pi, sigma, cartesian)
-        print(logicalQueryPlan)
+        self.m_QueryTree = [pi, sigma, cartesian]
 
         return fromSubQuery
+
 
