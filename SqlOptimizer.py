@@ -36,6 +36,7 @@ class SqlOptimizer:
 
     def __thetaJoinRule(self):
         # TODO: Implement CheckIfSigma and CheckIfCartesian
+        # TODO: Implement a method that will return sigma and cartesian
         # isValidSigma = self.CheckIfSigma(self._QueryTree[1])
         # isValidCartesian = self.CheckIfCartesian(self._QueryTree[2])
         # if isValidSigma and  isValidCartesian:
