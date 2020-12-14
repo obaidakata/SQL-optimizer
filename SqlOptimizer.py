@@ -4,6 +4,7 @@ class SqlOptimizer:
     _QueryTree = []
     _SquareBrackets = ['[', ']']
     _RoundedBrackets = ['(', ')']
+
     def __init__(self):
         self.__initSchema()
         self.__InitLegalOperators()
@@ -45,16 +46,16 @@ class SqlOptimizer:
             thetaJoin = "THETAJOIN[{0}]({1})".format(condition, tables)
             self._QueryTree.append(thetaJoin)
 
-    def __getSub(self, i_Sub, parenthesis):
-        start = i_Sub.find(parenthesis[0])
-        end = i_Sub.rfind(parenthesis[1])
+    def __getSub(self, i_Sub, i_Parenthesis):
+        start = i_Sub.find(i_Parenthesis[0])
+        end = i_Sub.rfind(i_Parenthesis[1])
         toReturn = None
         if start != -1 and end != -1:
-            toReturn = i_Sub[start+1:end]
+            toReturn = i_Sub[start + 1:end]
         return toReturn
 
     def __sigmaJoinRule(self):
-        #TODO: verify that the string contain sigma(join)
+        # TODO: verify that the string contain sigma(join)
         example = "SIGMA[x>5 and y<3](JOIN(R, S))"
         condition = self.__getSub(example, self._SquareBrackets)
         join = self.__getSub(example, self._RoundedBrackets)
@@ -67,12 +68,20 @@ class SqlOptimizer:
             print(fixed)
 
     def Print(self):
-        print(self._QueryTree[0], end="")
+        print(self)
+
+    def __str__(self):
+        return self._toString()
+
+    def _toString(self):
+        toReturn = self._QueryTree[0]
         for x in self._QueryTree[1:]:
-            print("(", x, sep="", end="")
+            toReturn += "("
+            toReturn += x
 
         for i in self._QueryTree[1:]:
-            print(")", sep="", end="")
+            toReturn += ")"
+        return toReturn
 
     def Optimize(self, i_Query):
         m_QueryTree = self.__buildTree(i_Query)
