@@ -32,11 +32,13 @@ class SqlOptimizer:
         pi = "PI[{0}]".format(selectSubQuery)
 
         self._QueryTree = [pi, sigma, cartesian]
-
         return fromSubQuery
 
     def __thetaJoinRule(self):
-        # TODO: verify that QueryTree[1] is what it should be
+        # TODO: Implement CheckIfSigma and CheckIfCartesian
+        # isValidSigma = self.CheckIfSigma(self._QueryTree[1])
+        # isValidCartesian = self.CheckIfCartesian(self._QueryTree[2])
+        # if isValidSigma and  isValidCartesian:
         condition = self.__getSub(self._QueryTree[1], self._SquareBrackets)
         tables = self.__getSub(self._QueryTree[2], self._RoundedBrackets)
 
@@ -65,7 +67,7 @@ class SqlOptimizer:
             firstTable = tables[0].strip()
             secondTable = tables[1].strip()
             fixed = "JOIN(SIGMA[{0}]({1}), {2})".format(condition, firstTable, secondTable)
-            print(fixed)
+            # print(fixed)
 
     def Print(self):
         print(self)
@@ -85,6 +87,9 @@ class SqlOptimizer:
 
     def Optimize(self, i_Query):
         m_QueryTree = self.__buildTree(i_Query)
+        print("Original: ", self)
         self.__thetaJoinRule()
-        self.__sigmaJoinRule()
+        print("After thetaJoinRule: ", self)
+        # self.__sigmaJoinRule()
+        # print("Original: ", self)
         return m_QueryTree
