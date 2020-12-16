@@ -20,6 +20,9 @@ class SqlOptimizer:
     def __initOptions(self):
         self.__options.append("11b")
         self.__options.append("6")
+        self.__options.append("4")
+        self.__options.append("4a")
+        self.__options.append("5a")
 
     def GetOptions(self):
         return self.__options
@@ -104,14 +107,47 @@ class SqlOptimizer:
             toReturn += ")"
         return toReturn
 
-    def Optimize(self, i_Rule, i_Query):
+    def setQuery(self, i_Query):
         self.__buildTree(i_Query)
 
+    def Optimize(self, i_Rule):
         if i_Rule == self.__options[0]:
             self.__thetaJoinRule()
         elif i_Rule == self.__options[1]:
             self.__sigmaJoinRule()
+        elif i_Rule == self.__options[2]:
+            self.__rule4()
+        elif i_Rule == self.__options[3]:
+            print(self)
+            self.__rule4a()
         else:
             print("Error")
         optimizedQuery = self.__toString()
         return optimizedQuery
+
+    def __rule4(self):
+        sigmaCondition = None
+        queryTreeLen = len(self._QueryTree)
+        for i in range(queryTreeLen):
+            if self._QueryTree[i].startswith("SIGMA"):
+                sigmaCondition = self.__getSub(self._QueryTree[i], self._SquareBrackets)
+                self._QueryTree.pop(i)
+                break
+        if sigmaCondition != None and sigmaCondition.__contains__("AND"):
+            splitted_sigmaCondition = sigmaCondition.split("AND")
+            sec1 = splitted_sigmaCondition[0].strip()
+            sec2 = splitted_sigmaCondition[1].strip()
+            newSigma1 = "SIGMA[{0}]".format(sec1)
+            newSigma2 = "SIGMA[{0}]".format(sec2)
+            self._QueryTree.insert(i, newSigma1)
+            self._QueryTree.insert(i+1, newSigma2)
+
+    def __rule4a(self):
+        sigmaCondition = None
+        queryTreeLen = len(self._QueryTree)
+        res = self.__getOperatorConditionAndOperand("SIGMA", "SIGMA")
+        newSigma1 = "SIGMA[{0}]".format(res[0])
+        newSigma2 = "SIGMA[{0}]".format(res[1])
+        # self._QueryTree.insert(i, newSigma1)
+        # self._QueryTree.insert(i + 1, newSigma2)
+

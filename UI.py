@@ -15,10 +15,11 @@ class OptimizerUI:
         self.__options = self.__optimizer.GetOptions()
         self.__numberOfRules = len(self.__options)
         self.__insertQuery()
-        userChoice = self.__showStartMenu()
-        self.LastAppliedRule = self.__options[userChoice - 1]
-        self.__query = self.__optimizer.Optimize(self.LastAppliedRule, self.__query)
-        self.__showResult()
+        while(1):
+            userChoice = self.__showStartMenu()
+            self.LastAppliedRule = self.__options[userChoice - 1]
+            self.__query = self.__optimizer.Optimize(self.LastAppliedRule)
+            self.__showResult()
 
     def __isUserChoiceLegal(self, userChoice):
         isLegal = False
@@ -47,6 +48,7 @@ class OptimizerUI:
         # self.__query = input("Please Type Your SQL query:")
         # "SIGMA[x>5 and y<3]", "JOIN(R, S)"
         self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10'
+        self.__optimizer.setQuery(self.__query)
 
     def __showResult(self):
         print("Result After apply Rule ", self.LastAppliedRule, end=" is ")
