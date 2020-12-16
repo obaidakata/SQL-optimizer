@@ -1,20 +1,28 @@
 class SqlOptimizer:
-    _Schema = {}
-    _LegalOperators = []
+    __Schema = {}
+    __LegalOperators = []
     _QueryTree = []
     _SquareBrackets = ['[', ']']
     _RoundedBrackets = ['(', ')']
-
+    __options = []
     def __init__(self):
         self.__initSchema()
         self.__InitLegalOperators()
+        self.__initOptions()
 
     def __initSchema(self):
-        self._Schema["R"] = {"A": "int", "B": "int", "C": "int", "D": "int", "E": "int"}
-        self._Schema["S"] = {"D": "int", "E": "int", "F": "int", "H": "int", "I": "int"}
+        self.__Schema["R"] = {"A": "int", "B": "int", "C": "int", "D": "int", "E": "int"}
+        self.__Schema["S"] = {"D": "int", "E": "int", "F": "int", "H": "int", "I": "int"}
 
     def __InitLegalOperators(self):
-        self._LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
+        self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
+
+    def __initOptions(self):
+        self.__options.append("11b")
+        self.__options.append("6")
+
+    def GetOptions(self):
+        return self.__options
 
     def __buildTree(self, i_Query):
         fromSubQuery = i_Query.split("FROM")
@@ -33,24 +41,6 @@ class SqlOptimizer:
 
         self._QueryTree = [pi, sigma, cartesian]
         return fromSubQuery
-
-    def __getSigmaOfCartesian(self):
-        toReturn = None
-        treeLength = len(self._QueryTree)
-        for i in range(treeLength):
-            subQuery = self._QueryTree[i]
-            if subQuery.startswith("SIGMA"):
-                nextSubQuery = self._QueryTree[i + 1] if (i + 1 < treeLength) else None
-                if nextSubQuery is not None and nextSubQuery.startswith("CARTESIAN"):
-                    # Pop the Sigma and Cartesian from query
-                    self._QueryTree.pop(i)
-                    self._QueryTree.pop(i)
-                    condition = self.__getSub(subQuery, self._SquareBrackets)
-                    tables = self.__getSub(nextSubQuery, self._RoundedBrackets)
-                    toReturn = [condition, tables]
-                    break
-
-        return toReturn
 
     def __getOperatorConditionAndOperand(self, i_OperatorName, i_NextOperatorName):
         # TODO: What if there is operands after the current operand that the code delete
@@ -101,9 +91,9 @@ class SqlOptimizer:
         print(self)
 
     def __str__(self):
-        return self._toString()
+        return self.__toString()
 
-    def _toString(self):
+    def __toString(self):
         toReturn = self._QueryTree[0]
         for x in self._QueryTree[1:]:
             toReturn += "("
@@ -113,15 +103,21 @@ class SqlOptimizer:
             toReturn += ")"
         return toReturn
 
-    def Optimize(self, i_Query):
+    def Optimize(self, i_Rule, i_Query):
         self.__buildTree(i_Query)
-        print("Original: ", self)
-        self.__thetaJoinRule()
-        print("After thetaJoinRule: ", self)
-        # just for example
-        self._QueryTree = ["SIGMA[x>5 and y<3]", "JOIN(R, S)"]
-        print("Original: ", self)
-        self.__sigmaJoinRule()
-        print("After sigmaJoinRule: : ", self)
-        optimizedQuery = ''.join(self._QueryTree)
+        if i_Rule == self.__options[0]:
+            self.__thetaJoinRule()
+        elif i_Rule == self.__options[1]:
+            self.__sigmaJoinRule()
+        else:
+            print("Error")
+
+        # print("Original: ", self)
+        # print("After thetaJoinRule: ", self)
+        # # just for example
+        # self._QueryTree = []
+        # print("Original: ", self)
+        #
+        # print("After sigmaJoinRule: : ", self)
+        optimizedQuery = self.__toString()
         return optimizedQuery
