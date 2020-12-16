@@ -40,6 +40,7 @@ class SqlOptimizer:
         pi = "PI[{0}]".format(selectSubQuery)
 
         self._QueryTree = [pi, sigma, cartesian]
+        print(self._QueryTree)
         return fromSubQuery
 
     def __getOperatorConditionAndOperand(self, i_OperatorName, i_NextOperatorName):
@@ -105,19 +106,12 @@ class SqlOptimizer:
 
     def Optimize(self, i_Rule, i_Query):
         self.__buildTree(i_Query)
+
         if i_Rule == self.__options[0]:
             self.__thetaJoinRule()
         elif i_Rule == self.__options[1]:
             self.__sigmaJoinRule()
         else:
             print("Error")
-
-        # print("Original: ", self)
-        # print("After thetaJoinRule: ", self)
-        # # just for example
-        # self._QueryTree = []
-        # print("Original: ", self)
-        #
-        # print("After sigmaJoinRule: : ", self)
         optimizedQuery = self.__toString()
         return optimizedQuery

@@ -21,8 +21,11 @@ class OptimizerUI:
         self.__showResult()
 
     def __isUserChoiceLegal(self, userChoice):
-        isLegal = userChoice.isnumeric()
-        isLegal = isLegal and int(userChoice) in range(1, self.__numberOfRules)
+        isLegal = False
+        if userChoice.isnumeric():
+            userChoiceAsInt = int(userChoice)
+            isLegal = userChoiceAsInt >= 1 and userChoiceAsInt <= self.__numberOfRules
+
         return isLegal
 
     def __showStartMenu(self):
@@ -37,7 +40,7 @@ class OptimizerUI:
             if self.__isUserChoiceLegal(userChoice):
                 break
             else:
-                print("Error Should be in the range({0},{1})".format(1, numberOfRules))
+                print("Error Should be in the range({0},{1})".format(1, self.__numberOfRules))
         return int(userChoice)
 
     def __insertQuery(self):
