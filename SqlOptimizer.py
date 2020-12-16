@@ -5,6 +5,7 @@ class SqlOptimizer:
     _SquareBrackets = ['[', ']']
     _RoundedBrackets = ['(', ')']
     __options = []
+
     def __init__(self):
         self.__initSchema()
         self.__InitLegalOperators()
@@ -43,24 +44,22 @@ class SqlOptimizer:
         pi = "PI[{0}]".format(selectSubQuery)
 
         self._QueryTree = [pi, sigma, cartesian]
-        print(self._QueryTree)
         return fromSubQuery
 
     def __getOperatorConditionAndOperand(self, i_OperatorName, i_NextOperatorName):
-        # TODO: What if there is operands after the current operand that the code delete
         toReturn = None
         treeLength = len(self._QueryTree)
         for i in range(treeLength):
             subQuery = self._QueryTree[i]
             if subQuery.startswith(i_OperatorName):
                 nextSubQuery = self._QueryTree[i + 1] if (i + 1 < treeLength) else None
-                if nextSubQuery is not None and nextSubQuery.startswith(i_NextOperatorName):
+                if (nextSubQuery is not None) and (i_NextOperatorName is None) or (
+                        nextSubQuery.startswith(i_NextOperatorName)):
                     # Pop the operator and its operands
                     self._QueryTree.pop(i)
                     self._QueryTree.pop(i)
                     condition = self.__getSub(subQuery, self._SquareBrackets)
-                    operand = self.__getSub(nextSubQuery, self._RoundedBrackets)
-                    toReturn = [condition, operand]
+                    toReturn = [condition, nextSubQuery, i]
                     break
 
         return toReturn
@@ -68,10 +67,19 @@ class SqlOptimizer:
     def __thetaJoinRule(self):
         res = self.__getOperatorConditionAndOperand("SIGMA", "CARTESIAN")
         if res is not None:
-            condition = "THETAJOIN[{0}]".format(res[0])
-            tables = res[1]
+            tables = self.__getSub(res[1], self._RoundedBrackets)
+            joinFormat = self._getTheProperJoinFormat(res[0])
+            condition = joinFormat.format(res[0], tables)
             self._QueryTree.append(condition)
-            self._QueryTree.append(tables)
+
+    def _getTheProperJoinFormat(self, i_Condition):
+        format = "TJOIN[{0}]({1})"
+        andExist = "AND" in i_Condition
+        orExist = "OR" in i_Condition
+        if not andExist and not orExist and "=" in i_Condition:
+            format = "NJOIN[{0}]({1})"
+
+        return format
 
     def __getSub(self, i_Sub, i_Parenthesis):
         start = i_Sub.find(i_Parenthesis[0])
@@ -83,16 +91,14 @@ class SqlOptimizer:
         return toReturn
 
     def __sigmaJoinRule(self):
-        res = self.__getOperatorConditionAndOperand("SIGMA", "JOIN")
+        res = self.__getOperatorConditionAndOperand("SIGMA", "NJOIN")
         if res is not None:
             condition = res[0]
-            tables = res[1]
-            fixed = "SIGMA[{0}]({1})".format(condition, tables)
-            self._QueryTree.append("JOIN")
+            tables = self.__getSub(res[1], self._RoundedBrackets)
+            tables = tables.split(',')
+            fixed = "SIGMA[{0}]({1}),{2}".format(condition, tables[0], tables[1])
+            self._QueryTree.append("NJOIN")
             self._QueryTree.append(fixed)
-
-    def Print(self):
-        print(self)
 
     def __str__(self):
         return self.__toString()
@@ -109,6 +115,7 @@ class SqlOptimizer:
 
     def setQuery(self, i_Query):
         self.__buildTree(i_Query)
+        print(self)
 
     def Optimize(self, i_Rule):
         if i_Rule == self.__options[0]:
@@ -118,8 +125,9 @@ class SqlOptimizer:
         elif i_Rule == self.__options[2]:
             self.__rule4()
         elif i_Rule == self.__options[3]:
-            print(self)
             self.__rule4a()
+        elif i_Rule == self.__options[4]:
+            self.__rule5a()
         else:
             print("Error")
         optimizedQuery = self.__toString()
@@ -131,23 +139,38 @@ class SqlOptimizer:
         for i in range(queryTreeLen):
             if self._QueryTree[i].startswith("SIGMA"):
                 sigmaCondition = self.__getSub(self._QueryTree[i], self._SquareBrackets)
-                self._QueryTree.pop(i)
-                break
-        if sigmaCondition != None and sigmaCondition.__contains__("AND"):
-            splitted_sigmaCondition = sigmaCondition.split("AND")
+                if "AND" in sigmaCondition:
+                    self._QueryTree.pop(i)
+                    break
+
+        if sigmaCondition != None and "AND" in sigmaCondition:
+            splitted_sigmaCondition = sigmaCondition.split("AND", 1)
             sec1 = splitted_sigmaCondition[0].strip()
             sec2 = splitted_sigmaCondition[1].strip()
             newSigma1 = "SIGMA[{0}]".format(sec1)
             newSigma2 = "SIGMA[{0}]".format(sec2)
             self._QueryTree.insert(i, newSigma1)
-            self._QueryTree.insert(i+1, newSigma2)
+            self._QueryTree.insert(i + 1, newSigma2)
 
     def __rule4a(self):
-        sigmaCondition = None
-        queryTreeLen = len(self._QueryTree)
         res = self.__getOperatorConditionAndOperand("SIGMA", "SIGMA")
-        newSigma1 = "SIGMA[{0}]".format(res[0])
-        newSigma2 = "SIGMA[{0}]".format(res[1])
-        # self._QueryTree.insert(i, newSigma1)
-        # self._QueryTree.insert(i + 1, newSigma2)
+        if res is not None:
+            firstSigmaCondition = res[0]
+            secondSigmaCondition = self.__getSub(res[1], self._SquareBrackets)
+            newSigma1 = "SIGMA[{0}]".format(secondSigmaCondition)
+            newSigma2 = "SIGMA[{0}]".format(firstSigmaCondition)
+            oldSigmaIndex = res[2]
+            self._QueryTree.insert(oldSigmaIndex, newSigma1)
+            self._QueryTree.insert(oldSigmaIndex + 1, newSigma2)
+
+    def __rule5a(self):
+        res = self.__getOperatorConditionAndOperand("PI", "SIGMA")
+        if res is not None:
+            piCondition = res[0]
+            SigmaCondition = self.__getSub(res[1], self._SquareBrackets)
+            sigma = "SIGMA[{0}]".format(SigmaCondition)
+            pi = "PI[{0}]".format(piCondition)
+            index = res[2]
+            self._QueryTree.insert(index, sigma)
+            self._QueryTree.insert(index + 1, pi)
 

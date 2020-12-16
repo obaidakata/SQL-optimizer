@@ -15,7 +15,7 @@ class OptimizerUI:
         self.__options = self.__optimizer.GetOptions()
         self.__numberOfRules = len(self.__options)
         self.__insertQuery()
-        while(1):
+        while True:
             userChoice = self.__showStartMenu()
             self.LastAppliedRule = self.__options[userChoice - 1]
             self.__query = self.__optimizer.Optimize(self.LastAppliedRule)
@@ -46,8 +46,7 @@ class OptimizerUI:
 
     def __insertQuery(self):
         # self.__query = input("Please Type Your SQL query:")
-        # "SIGMA[x>5 and y<3]", "JOIN(R, S)"
-        self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10'
+        self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
         self.__optimizer.setQuery(self.__query)
 
     def __showResult(self):
