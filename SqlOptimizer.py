@@ -143,7 +143,7 @@ class SqlOptimizer:
                     self._QueryTree.pop(i)
                     break
 
-        if sigmaCondition != None and "AND" in sigmaCondition:
+        if sigmaCondition is not None and "AND" in sigmaCondition:
             splitted_sigmaCondition = sigmaCondition.split("AND", 1)
             sec1 = splitted_sigmaCondition[0].strip()
             sec2 = splitted_sigmaCondition[1].strip()
@@ -153,6 +153,7 @@ class SqlOptimizer:
             self._QueryTree.insert(i + 1, newSigma2)
 
     def __rule4a(self):
+        # TODO: What if thrre is 3 sigma witch one i should swap
         res = self.__getOperatorConditionAndOperand("SIGMA", "SIGMA")
         if res is not None:
             firstSigmaCondition = res[0]
@@ -173,4 +174,3 @@ class SqlOptimizer:
             index = res[2]
             self._QueryTree.insert(index, sigma)
             self._QueryTree.insert(index + 1, pi)
-
