@@ -1,9 +1,9 @@
 class SqlOptimizer:
     __Schema = {}
     __LegalOperators = []
-    _QueryTree = []
-    _SquareBrackets = ['[', ']']
-    _RoundedBrackets = ['(', ')']
+    __QueryTree = []
+    __SquareBrackets = ['[', ']']
+    __RoundedBrackets = ['(', ')']
     __options = []
 
     def __init__(self):
@@ -19,11 +19,7 @@ class SqlOptimizer:
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
 
     def __initOptions(self):
-        self.__options.append("11b")
-        self.__options.append("6")
-        self.__options.append("4")
-        self.__options.append("4a")
-        self.__options.append("5a")
+        self.__options = ["11b", "6", "4", "4a", "5a"]
 
     def GetOptions(self):
         return self.__options
