@@ -54,7 +54,7 @@ class SqlOptimizer:
                     # Pop the operator and its operands
                     self._QueryTree.pop(i)
                     self._QueryTree.pop(i)
-                    condition = self.__getSub(subQuery, self._SquareBrackets)
+                    condition = self.__getSub(subQuery, self.__SquareBrackets)
                     toReturn = [condition, nextSubQuery, i]
                     break
 
@@ -63,7 +63,7 @@ class SqlOptimizer:
     def __thetaJoinRule(self):
         res = self.__getOperatorConditionAndOperand("SIGMA", "CARTESIAN")
         if res is not None:
-            tables = self.__getSub(res[1], self._RoundedBrackets)
+            tables = self.__getSub(res[1], self.__RoundedBrackets)
             joinFormat = self._getTheProperJoinFormat(res[0])
             condition = joinFormat.format(res[0], tables)
             self._QueryTree.append(condition)
@@ -90,7 +90,7 @@ class SqlOptimizer:
         res = self.__getOperatorConditionAndOperand("SIGMA", "NJOIN")
         if res is not None:
             condition = res[0]
-            tables = self.__getSub(res[1], self._RoundedBrackets)
+            tables = self.__getSub(res[1], self.__RoundedBrackets)
             tables = tables.split(',')
             fixed = "SIGMA[{0}]({1}),{2}".format(condition, tables[0], tables[1])
             self._QueryTree.append("NJOIN")
@@ -134,7 +134,7 @@ class SqlOptimizer:
         queryTreeLen = len(self._QueryTree)
         for i in range(queryTreeLen):
             if self._QueryTree[i].startswith("SIGMA"):
-                sigmaCondition = self.__getSub(self._QueryTree[i], self._SquareBrackets)
+                sigmaCondition = self.__getSub(self._QueryTree[i], self.__SquareBrackets)
                 if "AND" in sigmaCondition:
                     self._QueryTree.pop(i)
                     break
@@ -153,7 +153,7 @@ class SqlOptimizer:
         res = self.__getOperatorConditionAndOperand("SIGMA", "SIGMA")
         if res is not None:
             firstSigmaCondition = res[0]
-            secondSigmaCondition = self.__getSub(res[1], self._SquareBrackets)
+            secondSigmaCondition = self.__getSub(res[1], self.__SquareBrackets)
             newSigma1 = "SIGMA[{0}]".format(secondSigmaCondition)
             newSigma2 = "SIGMA[{0}]".format(firstSigmaCondition)
             oldSigmaIndex = res[2]
@@ -164,7 +164,7 @@ class SqlOptimizer:
         res = self.__getOperatorConditionAndOperand("PI", "SIGMA")
         if res is not None:
             piCondition = res[0]
-            SigmaCondition = self.__getSub(res[1], self._SquareBrackets)
+            SigmaCondition = self.__getSub(res[1], self.__SquareBrackets)
             sigma = "SIGMA[{0}]".format(SigmaCondition)
             pi = "PI[{0}]".format(piCondition)
             index = res[2]
