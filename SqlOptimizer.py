@@ -43,35 +43,6 @@ class SqlOptimizer:
         self.__QueryTree = [pi, sigma, cartesian, tables]
         return fromSubQuery
 
-    # def __getOperatorConditionAndOperand(self, i_OperatorName, i_NextOperatorName):
-    #     if i_NextOperatorName == "CARTESIAN":
-    #         res = self.__getOperatorConditionAndOperand2(i_OperatorName, i_NextOperatorName)
-    #         tablesIndex = res[2]
-    #         res[1] = self.__QueryTree[tablesIndex]
-    #         self.__QueryTree.pop()
-    #         return res
-    #     else:
-    #         return self.__getOperatorConditionAndOperand2(i_OperatorName, i_NextOperatorName)
-
-
-    # def __getOperatorConditionAndOperand2(self, i_OperatorName, i_NextOperatorName):
-    #     toReturn = None
-    #     treeLength = len(self.__QueryTree)
-    #     for i in range(treeLength):
-    #         subQuery = self.__QueryTree[i]
-    #         if isinstance(subQuery, str) and subQuery.startswith(i_OperatorName):
-    #             nextSubQuery = self.__QueryTree[i + 1] if (i + 1 < treeLength) else None
-    #             if (nextSubQuery is not None) and (i_NextOperatorName is None) or (
-    #                     nextSubQuery.startswith(i_NextOperatorName)):
-    #                 # Pop the operator and its operands
-    #                 self.__QueryTree.pop(i)
-    #                 self.__QueryTree.pop(i)
-    #                 condition = self.__getSub(subQuery, self.__SquareBrackets)
-    #                 toReturn = [condition, nextSubQuery, i]
-    #                 break
-    #
-    #     return toReturn
-
     def _getTheProperJoinFormat(self, i_Condition):
         format = "TJOIN[{0}]({1})"
         andExist = "AND" in i_Condition
@@ -89,8 +60,6 @@ class SqlOptimizer:
             toReturn = i_Sub[start + 1:end]
             toReturn = toReturn.strip()
         return toReturn
-
-
 
     def __str__(self):
         return self.__toString(self.__QueryTree)
@@ -121,6 +90,7 @@ class SqlOptimizer:
             res = res or stirngToCheck.startswith("NJOIN")
             return res
         return False
+
     def setQuery(self, i_Query):
         self.__buildTree(i_Query)
         print(self)
@@ -131,7 +101,7 @@ class SqlOptimizer:
         elif i_Rule == self.__options[1]:
             self.__rule6()
         elif i_Rule == self.__options[2]:
-            self.__rule42()
+            self.__rule4()
         elif i_Rule == self.__options[3]:
             self.__rule4a()
         elif i_Rule == self.__options[4]:
@@ -143,32 +113,23 @@ class SqlOptimizer:
 
     def __rule11b(self):
         #TODO: FIX
-        res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
-        if res is not None:
-            tables = res[1]
-            joinFormat = self._getTheProperJoinFormat(res[0])
-            condition = joinFormat.format(res[0], tables)
-            self.__QueryTree.append(condition)
+        sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
+
 
     def __rule6(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
-            tempArray = self.__QueryTree
-            for i in res:
-                tempArray = tempArray[i]
-            sigma = tempArray
-            cartisianIndex = res[-1] + 1
-            cartisianTablesIndex = cartisianIndex + 1
-            cartisiainTables = self.__QueryTree[cartisianTablesIndex]
-            toInsert = ["CARTESIAN", [[sigma, cartisiainTables[0]], cartisiainTables[1]]]
-            self.__QueryTree.pop(cartisianIndex)
-            self.__QueryTree.pop(cartisianIndex) # Pop out catisian tables
+            sigma = self.__getNestedElement(self.__QueryTree, res)
+            cartesianIndex = res[-1] + 1
+            cartesianTablesIndex = cartesianIndex + 1
+            cartesiainTables = self.__QueryTree[cartesianTablesIndex]
+            toInsert = ["CARTESIAN", [[sigma, cartesiainTables[0]], cartesiainTables[1]]]
+            self.__QueryTree.pop(cartesianIndex)
+            self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
             toInsert.reverse()
             self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
 
-
-
-    def __rule42(self):
+    def __rule4(self):
         res = self.__findSigmaWithAndCondition(self.__QueryTree)
         if res is not None:
             tempArray = self.__QueryTree
@@ -198,38 +159,6 @@ class SqlOptimizer:
                 newArray[i] = subArray
         return newArray
 
-
-    def __rule4(self):
-        sigmaCondition = None
-        queryTreeLen = len(self.__QueryTree)
-        for i in range(queryTreeLen):
-            if self.__QueryTree[i].startswith("SIGMA"):
-                sigmaCondition = self.__getSub(self.__QueryTree[i], self.__SquareBrackets)
-                if "AND" in sigmaCondition:
-                    self.__QueryTree.pop(i)
-                    break
-
-        if sigmaCondition is not None and "AND" in sigmaCondition:
-            splitted_sigmaCondition = sigmaCondition.split("AND", 1)
-            sec1 = splitted_sigmaCondition[0].strip()
-            sec2 = splitted_sigmaCondition[1].strip()
-            newSigma1 = "SIGMA[{0}]".format(sec1)
-            newSigma2 = "SIGMA[{0}]".format(sec2)
-            self.__QueryTree.insert(i, newSigma1)
-            self.__QueryTree.insert(i + 1, newSigma2)
-
-    def __rule4a2(self):
-        # TODO: What if there are 3 sigma witch one i should swap
-        res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
-        if res is not None:
-            firstSigmaCondition = res[0]
-            secondSigmaCondition = self.__getSub(res[1], self.__SquareBrackets)
-            newSigma1 = "SIGMA[{0}]".format(secondSigmaCondition)
-            newSigma2 = "SIGMA[{0}]".format(firstSigmaCondition)
-            oldSigmaIndex = res[2]
-            self.__QueryTree.insert(oldSigmaIndex, newSigma1)
-            self.__QueryTree.insert(oldSigmaIndex + 1, newSigma2)
-
     def __rule4a(self):
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
         if sigmaIndex is not None:
@@ -239,11 +168,6 @@ class SqlOptimizer:
             # Swap the to sigma
             self.__replaseNestedElement(self.__QueryTree, sigmaIndex, secondSigma)
             self.__replaseNestedElement(self.__QueryTree, secondSigmaIndex, firstSigma)
-
-
-
-
-
 
     def __rule5a(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "PI", "SIGMA")
