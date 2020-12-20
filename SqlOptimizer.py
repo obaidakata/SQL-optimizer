@@ -19,7 +19,7 @@ class SqlOptimizer:
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
 
     def __initOptions(self):
-        self.__options = ["11b", "6", "4", "4a", "5a"]
+        self.__options = ["11b", "6", "6a", "4", "4a", "5a"]
 
     def GetOptions(self):
         return self.__options
@@ -67,15 +67,19 @@ class SqlOptimizer:
     def __toString(self, listToPrint):
         toReturn = ""
         close = 0
-        for x in listToPrint:
-            if isinstance(x, str):
-                toReturn += x
-                if self.__isOperator(x):
+        listLen = len(listToPrint)
+        for i in range(listLen):
+            toPrint = listToPrint[i]
+            if isinstance(toPrint, str):
+                toPrint = toPrint.strip()
+                toReturn += toPrint
+                if self.__isOperator(toPrint):
                     toReturn += "("
                     close = close + 1
+                elif i < listLen-1:
+                    toReturn += ", "
             else:
-                inside = self.__toString(x)
-                toReturn += inside
+                toReturn += self.__toString(toPrint)
 
 
         for _ in range(close):
@@ -101,10 +105,12 @@ class SqlOptimizer:
         elif i_Rule == self.__options[1]:
             self.__rule6()
         elif i_Rule == self.__options[2]:
-            self.__rule4()
+            self.__rule6a()
         elif i_Rule == self.__options[3]:
-            self.__rule4a()
+            self.__rule4()
         elif i_Rule == self.__options[4]:
+            self.__rule4a()
+        elif i_Rule == self.__options[5]:
             self.__rule5a()
         else:
             print("Error")
@@ -112,9 +118,15 @@ class SqlOptimizer:
         return optimizedQuery
 
     def __rule11b(self):
-        #TODO: FIX
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
-
+        if sigmaIndex is not None:
+            cartesianIndex = sigmaIndex.copy()# self.__getNextOperatorIndex(sigmaIndex)
+            cartesianIndex[-1] = cartesianIndex[-1] + 1
+            sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
+            condition = self.__getSub(sigma, self.__SquareBrackets)
+            nJoin = "NJOIN[{0}]".format(condition)
+            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, nJoin)
+            self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
 
     def __rule6(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
@@ -124,6 +136,19 @@ class SqlOptimizer:
             cartesianTablesIndex = cartesianIndex + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
             toInsert = ["CARTESIAN", [[sigma, cartesiainTables[0]], cartesiainTables[1]]]
+            self.__QueryTree.pop(cartesianIndex)
+            self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+
+    def __rule6a(self):
+        res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
+        if res is not None:
+            sigma = self.__getNestedElement(self.__QueryTree, res)
+            cartesianIndex = res[-1] + 1
+            cartesianTablesIndex = cartesianIndex + 1
+            cartesiainTables = self.__QueryTree[cartesianTablesIndex]
+            toInsert = ["CARTESIAN", [cartesiainTables[0], [sigma, cartesiainTables[1]]]]
             self.__QueryTree.pop(cartesianIndex)
             self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
             toInsert.reverse()
@@ -170,15 +195,18 @@ class SqlOptimizer:
             self.__replaseNestedElement(self.__QueryTree, secondSigmaIndex, firstSigma)
 
     def __rule5a(self):
-        res = self.__getOperatorConditionAndOperand(self.__QueryTree, "PI", "SIGMA")
-        if res is not None:
-            piCondition = res[0]
-            SigmaCondition = self.__getSub(res[1], self.__SquareBrackets)
-            sigma = "SIGMA[{0}]".format(SigmaCondition)
-            pi = "PI[{0}]".format(piCondition)
-            index = res[2]
-            self.__QueryTree.insert(index, sigma)
-            self.__QueryTree.insert(index + 1, pi)
+        piIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "PI", "SIGMA")
+        if piIndex is not None:
+            pi = self.__getNestedElement(self.__QueryTree, piIndex)
+            sigmaIndex = self.__getNextOperatorIndex(piIndex)
+            sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
+            sigmaCondition = self.__getSub(sigma, self.__SquareBrackets)
+            piCondition = self.__getSub(pi, self.__SquareBrackets)
+            sigma = "SIGMA[{0}]".format(piCondition)
+            pi = "PI[{0}]".format(sigmaCondition)
+            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, pi)
+            self.__replaseNestedElement(self.__QueryTree, piIndex, sigma)
+
 
     def __findSigmaWithAndCondition(self, arrayToLookFor):
         res = None
@@ -227,28 +255,53 @@ class SqlOptimizer:
             tempArray = tempArray[i]
         return tempArray
 
-    def __replaseNestedElement(self, arrayToLookFor, indexs, newElement):
+    def __replaseNestedElement(self, arrayToLookFor, indexs, newElement=None):
         numberOfIndexes = len(indexs)
         temp = arrayToLookFor
         for i in range(numberOfIndexes):
             if i == numberOfIndexes -1:
                 temp.pop(indexs[i])
-                temp.insert(indexs[i], newElement)
+                if newElement is not None:
+                    temp.insert(indexs[i], newElement)
                 break
             else:
                 temp = temp[indexs[i]]
 
     def __getNextOperatorIndex(self, indexes):
-        numberOfIndexes = len(indexes)
-        temp = self.__QueryTree
-        nextOperatorIndex = indexes.copy()
-        for i in range(numberOfIndexes):
-            if i == numberOfIndexes - 1:
-                if isinstance(temp[i -1], str):
-                    nextOperatorIndex[-1] = nextOperatorIndex[-1] + 1
-                else:
-                    nextOperatorIndex[-1] = nextOperatorIndex[-1] + 1
-                    nextOperatorIndex.append(0)
-            else:
-                temp = temp[indexes[i]]
-        return nextOperatorIndex
+        nextIndexes = indexes.copy()
+        nextIndexes[-1] = nextIndexes[-1] + 1
+        nextElement = self.__getNestedElement(self.__QueryTree, nextIndexes)
+        if not isinstance(nextElement, str):
+            nextIndexes.append(0)
+        return nextIndexes
+
+    def checkPIAndSigmaConds(self):
+        splitRes = None
+        splittedAnd = None
+        splitRes3 = None
+        res = self.__getOperatorConditionAndOperand("PI", "SIGMA")
+        SigmaCondition = self._getSub(res[1], self._SquareBrackets)
+        if SigmaCondition._contains("AND") and not SigmaCondition.contains_("OR"):
+            splitRes = SigmaCondition.split("AND")
+        elif SigmaCondition._contains("OR") and not SigmaCondition.contains_("AND"):
+            splitRes = SigmaCondition.split("AND")
+        else:
+            splittedAnd = SigmaCondition.split("AND")
+            splitRes = "".join(splittedAnd).split("OR")
+        splitedRes2 = "".join(splitRes)
+        for i in range(len(self.__LegalOperators)):
+            if splitedRes2._contains(self._LegalOperators[i]):
+                splitRes3 = splitedRes2.split(self.__LegalOperators[i])
+                splitedRes2 = "".join(splitRes3)
+        s = ''.join(splitRes3)
+        s1 = " ".join(s.split())
+        result = ''.join([i for i in s1 if not i.isdigit()]).split(" ")
+        result2 = res[0].split(",")
+        result2 = [x.strip(' ') for x in result2]
+        for i in range(len(result)):
+            leftDot = result[i].split(".")
+            if result[i] in result2:
+                continue;
+            elif leftDot[0] not in result2:
+                return False
+        return True
