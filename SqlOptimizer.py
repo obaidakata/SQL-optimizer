@@ -207,7 +207,6 @@ class SqlOptimizer:
             self.__replaseNestedElement(self.__QueryTree, sigmaIndex, pi)
             self.__replaseNestedElement(self.__QueryTree, piIndex, sigma)
 
-
     def __findSigmaWithAndCondition(self, arrayToLookFor):
         res = None
         arrayLen = len(arrayToLookFor)
