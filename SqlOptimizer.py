@@ -34,14 +34,15 @@ class SqlOptimizer:
         whereSubQuery = i_Query.split("WHERE")
         whereSubQuery = whereSubQuery[1].strip()
         sigma = "SIGMA[{0}]".format(whereSubQuery)
+        sigma = ' '.join(sigma.split())
 
         selectSubQuery = i_Query.split("SELECT")
         selectSubQuery = selectSubQuery[1].split("FROM")
         selectSubQuery = selectSubQuery[0].strip()
         pi = "PI[{0}]".format(selectSubQuery)
+        pi = ' '.join(pi.split())
 
         self.__QueryTree = [pi, sigma, cartesian, tables]
-        return fromSubQuery
 
     def _getTheProperJoinFormat(self, i_Condition):
         format = "TJOIN[{0}]({1})"
@@ -97,7 +98,6 @@ class SqlOptimizer:
 
     def setQuery(self, i_Query):
         self.__buildTree(i_Query)
-        print(self)
 
     def Optimize(self, i_Rule):
         if i_Rule == self.__options[0]:
@@ -113,7 +113,7 @@ class SqlOptimizer:
         elif i_Rule == self.__options[5]:
             self.__rule5a()
         else:
-            print("Error")
+            print("Error {0} is not rule ".format(i_Rule))
         optimizedQuery = self.__toString(self.__QueryTree)
         return optimizedQuery
 
@@ -171,19 +171,6 @@ class SqlOptimizer:
                 toInsert = [newSigma2, newSigma1]
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
 
-    def insertIntoNestedArray(self, nestedArray, indexs, toInsert):
-        newArray = nestedArray
-        for i in indexs:
-            if isinstance(newArray[i], str):
-                newArray.pop(i)
-                for y in toInsert:
-                    newArray.insert(i, y)
-            else:
-                indexs.pop(0)
-                subArray = self.insertIntoNestedArray(newArray[i], indexs, toInsert)
-                newArray[i] = subArray
-        return newArray
-
     def __rule4a(self):
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
         if sigmaIndex is not None:
@@ -202,10 +189,11 @@ class SqlOptimizer:
             sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
             sigmaCondition = self.__getSub(sigma, self.__SquareBrackets)
             piCondition = self.__getSub(pi, self.__SquareBrackets)
-            sigma = "SIGMA[{0}]".format(piCondition)
-            pi = "PI[{0}]".format(sigmaCondition)
-            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, pi)
-            self.__replaseNestedElement(self.__QueryTree, piIndex, sigma)
+            if self.__checkPIAndSigmaConds(sigmaCondition, piCondition):
+                sigma = "SIGMA[{0}]".format(piCondition)
+                pi = "PI[{0}]".format(sigmaCondition)
+                self.__replaseNestedElement(self.__QueryTree, sigmaIndex, pi)
+                self.__replaseNestedElement(self.__QueryTree, piIndex, sigma)
 
     def __findSigmaWithAndCondition(self, arrayToLookFor):
         res = None
@@ -219,7 +207,9 @@ class SqlOptimizer:
                         res = [i]
                         break
             else:
-                res = [i] + self.__findSigmaWithAndCondition(subQuery)
+                pathTail = self.__findSigmaWithAndCondition(subQuery)
+                if pathTail is not None:
+                    res = [i] + pathTail
         return res
 
     def __getOperatorConditionAndOperand(self, arrayToLookFor, i_OperatorName, i_NextOperatorName):
@@ -274,28 +264,39 @@ class SqlOptimizer:
             nextIndexes.append(0)
         return nextIndexes
 
-    def checkPIAndSigmaConds(self):
+    def insertIntoNestedArray(self, nestedArray, indexs, toInsert):
+        newArray = nestedArray
+        for i in indexs:
+            if isinstance(newArray[i], str):
+                newArray.pop(i)
+                for y in toInsert:
+                    newArray.insert(i, y)
+            else:
+                indexs.pop(0)
+                subArray = self.insertIntoNestedArray(newArray[i], indexs, toInsert)
+                newArray[i] = subArray
+        return newArray
+
+    def __checkPIAndSigmaConds(self, sigmaCondition, piCondition):
         splitRes = None
         splittedAnd = None
         splitRes3 = None
-        res = self.__getOperatorConditionAndOperand("PI", "SIGMA")
-        SigmaCondition = self._getSub(res[1], self._SquareBrackets)
-        if SigmaCondition._contains("AND") and not SigmaCondition.contains_("OR"):
-            splitRes = SigmaCondition.split("AND")
-        elif SigmaCondition._contains("OR") and not SigmaCondition.contains_("AND"):
-            splitRes = SigmaCondition.split("AND")
+        if "AND" in sigmaCondition and not "OR" in sigmaCondition:
+            splitRes = sigmaCondition.split("AND")
+        elif "OR" in sigmaCondition and not "AND" in sigmaCondition:
+            splitRes = sigmaCondition.split("AND")
         else:
-            splittedAnd = SigmaCondition.split("AND")
+            splittedAnd = sigmaCondition.split("AND")
             splitRes = "".join(splittedAnd).split("OR")
         splitedRes2 = "".join(splitRes)
         for i in range(len(self.__LegalOperators)):
-            if splitedRes2._contains(self._LegalOperators[i]):
+            if self.__LegalOperators[i] in splitedRes2:
                 splitRes3 = splitedRes2.split(self.__LegalOperators[i])
                 splitedRes2 = "".join(splitRes3)
         s = ''.join(splitRes3)
         s1 = " ".join(s.split())
         result = ''.join([i for i in s1 if not i.isdigit()]).split(" ")
-        result2 = res[0].split(",")
+        result2 = piCondition.split(",")
         result2 = [x.strip(' ') for x in result2]
         for i in range(len(result)):
             leftDot = result[i].split(".")
