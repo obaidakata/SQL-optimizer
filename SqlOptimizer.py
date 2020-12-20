@@ -218,7 +218,7 @@ class SqlOptimizer:
             self.__QueryTree.insert(i, newSigma1)
             self.__QueryTree.insert(i + 1, newSigma2)
 
-    def __rule4a(self):
+    def __rule4a2(self):
         # TODO: What if there are 3 sigma witch one i should swap
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
         if res is not None:
@@ -229,6 +229,21 @@ class SqlOptimizer:
             oldSigmaIndex = res[2]
             self.__QueryTree.insert(oldSigmaIndex, newSigma1)
             self.__QueryTree.insert(oldSigmaIndex + 1, newSigma2)
+
+    def __rule4a(self):
+        sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
+        if sigmaIndex is not None:
+            firstSigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
+            secondSigmaIndex = self.__getNextOperatorIndex(sigmaIndex)
+            secondSigma = self.__getNestedElement(self.__QueryTree, secondSigmaIndex)
+            # Swap the to sigma
+            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, secondSigma)
+            self.__replaseNestedElement(self.__QueryTree, secondSigmaIndex, firstSigma)
+
+
+
+
+
 
     def __rule5a(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "PI", "SIGMA")
@@ -269,9 +284,47 @@ class SqlOptimizer:
                             # return i_OperatorName index
                             toReturn = [i]
                             break
+                        elif isinstance(nextSubQuery[0], str) and nextSubQuery[0].startswith(i_NextOperatorName):
+                            toReturn = [i]
+                            break
+
             else:
                 # return full path of nested i_OperatorName
-                toReturn = [i] + self.__getOperatorConditionAndOperand(subQuery, i_OperatorName, i_NextOperatorName)
+                pathTail = self.__getOperatorConditionAndOperand(subQuery, i_OperatorName, i_NextOperatorName)
+                if pathTail is not None:
+                    toReturn = [i] + pathTail
 
 
         return toReturn
+
+    def __getNestedElement(self, arrayToLookFor, indexs):
+        tempArray = arrayToLookFor
+        for i in indexs:
+            tempArray = tempArray[i]
+        return tempArray
+
+    def __replaseNestedElement(self, arrayToLookFor, indexs, newElement):
+        numberOfIndexes = len(indexs)
+        temp = arrayToLookFor
+        for i in range(numberOfIndexes):
+            if i == numberOfIndexes -1:
+                temp.pop(indexs[i])
+                temp.insert(indexs[i], newElement)
+                break
+            else:
+                temp = temp[indexs[i]]
+
+    def __getNextOperatorIndex(self, indexes):
+        numberOfIndexes = len(indexes)
+        temp = self.__QueryTree
+        nextOperatorIndex = indexes.copy()
+        for i in range(numberOfIndexes):
+            if i == numberOfIndexes - 1:
+                if isinstance(temp[i -1], str):
+                    nextOperatorIndex[-1] = nextOperatorIndex[-1] + 1
+                else:
+                    nextOperatorIndex[-1] = nextOperatorIndex[-1] + 1
+                    nextOperatorIndex.append(0)
+            else:
+                temp = temp[indexes[i]]
+        return nextOperatorIndex
