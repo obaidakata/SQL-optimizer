@@ -5,6 +5,7 @@ class SqlOptimizer:
     __SquareBrackets = ['[', ']']
     __RoundedBrackets = ['(', ')']
     __options = []
+    __logNumber = 1
 
     def __init__(self):
         self.__initSchema()
@@ -19,7 +20,29 @@ class SqlOptimizer:
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
 
     def __initOptions(self):
-        self.__options = ["11b", "6", "6a", "4", "4a", "5a"]
+        self.__options = ["11b", "4", "4a", "5a", "6 with Cartesian", "6a with Cartesian", "6 with NJOIN", "6a with NJOIN"]
+
+    def Optimize(self, i_Rule):
+        if i_Rule == self.__options[0]:
+            self.__rule11b()
+        elif i_Rule == self.__options[1]:
+            self.__rule4()
+        elif i_Rule == self.__options[2]:
+            self.__rule4a()
+        elif i_Rule == self.__options[3]:
+            self.__rule5a()
+        elif i_Rule == self.__options[4]:
+            self.__rule6WithCartesian()
+        elif i_Rule == self.__options[5]:
+            self.__rule6AWithCartesian()
+        elif i_Rule == self.__options[6]:
+            self.__rule6WithNjoin()
+        elif i_Rule == self.__options[7]:
+            self.__rule6AWithNjoin()
+        else:
+            print("Error {0} is not rule ".format(i_Rule))
+        optimizedQuery = self.__toString(self.__QueryTree)
+        return optimizedQuery
 
     def GetOptions(self):
         return self.__options
@@ -77,8 +100,10 @@ class SqlOptimizer:
                 if self.__isOperator(toPrint):
                     toReturn += "("
                     close = close + 1
-                elif i < listLen-1:
+                elif  i < listLen -1:
                     toReturn += ", "
+            elif i < listLen -1 :
+                toReturn += self.__toString(toPrint) + ', '
             else:
                 toReturn += self.__toString(toPrint)
 
@@ -99,24 +124,6 @@ class SqlOptimizer:
     def setQuery(self, i_Query):
         self.__buildTree(i_Query)
 
-    def Optimize(self, i_Rule):
-        if i_Rule == self.__options[0]:
-            self.__rule11b()
-        elif i_Rule == self.__options[1]:
-            self.__rule6()
-        elif i_Rule == self.__options[2]:
-            self.__rule6a()
-        elif i_Rule == self.__options[3]:
-            self.__rule4()
-        elif i_Rule == self.__options[4]:
-            self.__rule4a()
-        elif i_Rule == self.__options[5]:
-            self.__rule5a()
-        else:
-            print("Error {0} is not rule ".format(i_Rule))
-        optimizedQuery = self.__toString(self.__QueryTree)
-        return optimizedQuery
-
     def __rule11b(self):
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if sigmaIndex is not None:
@@ -124,11 +131,16 @@ class SqlOptimizer:
             cartesianIndex[-1] = cartesianIndex[-1] + 1
             sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
             condition = self.__getSub(sigma, self.__SquareBrackets)
-            nJoin = "NJOIN[{0}]".format(condition)
-            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, nJoin)
+            # if checkCondition()
+            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
             self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
+        else:
+            self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
 
-    def __rule6(self):
+    def checkIfConditionContainsOnlySharedColomns(self):
+        return True
+
+    def __rule6WithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
             sigma = self.__getNestedElement(self.__QueryTree, res)
@@ -140,8 +152,10 @@ class SqlOptimizer:
             self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
             toInsert.reverse()
             self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+        else:
+            self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
-    def __rule6a(self):
+    def __rule6AWithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
             sigma = self.__getNestedElement(self.__QueryTree, res)
@@ -153,6 +167,38 @@ class SqlOptimizer:
             self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
             toInsert.reverse()
             self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+        else:
+            self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
+
+    def __rule6WithNjoin(self):
+        res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "NJOIN")
+        if res is not None:
+            sigma = self.__getNestedElement(self.__QueryTree, res)
+            nJoinIndex = res[-1] + 1
+            nJoinTablesIndex = nJoinIndex + 1
+            nJoinTables = self.__QueryTree[nJoinTablesIndex]
+            toInsert = ["NJOIN", [[sigma, nJoinTables[0]], nJoinTables[1]]]
+            self.__QueryTree.pop(nJoinIndex)
+            self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+        else:
+            self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
+
+    def __rule6AWithNjoin(self):
+        res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "NJOIN")
+        if res is not None:
+            sigma = self.__getNestedElement(self.__QueryTree, res)
+            nJoinIndex = res[-1] + 1
+            nJoinTablesIndex = nJoinIndex + 1
+            nJoinTables = self.__QueryTree[nJoinTablesIndex]
+            toInsert = ["CARTESIAN", [nJoinTables[0], [sigma, nJoinTables[1]]]]
+            self.__QueryTree.pop(nJoinIndex)
+            self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+        else:
+            self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
     def __rule4(self):
         res = self.__findSigmaWithAndCondition(self.__QueryTree)
@@ -170,6 +216,10 @@ class SqlOptimizer:
                 newSigma2 = "SIGMA[{0}]".format(sec2)
                 toInsert = [newSigma2, newSigma1]
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            else:
+                self.__log("Rule 4 no AND found")
+        else:
+            self.__log("rule 4 - No digma with and")
 
     def __rule4a(self):
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
@@ -180,6 +230,8 @@ class SqlOptimizer:
             # Swap the to sigma
             self.__replaseNestedElement(self.__QueryTree, sigmaIndex, secondSigma)
             self.__replaseNestedElement(self.__QueryTree, secondSigmaIndex, firstSigma)
+        else:
+            self.__log("Error in rule 4a - NO SIGMA(SIGMA()) found")
 
     def __rule5a(self):
         piIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "PI", "SIGMA")
@@ -194,6 +246,10 @@ class SqlOptimizer:
                 pi = "PI[{0}]".format(sigmaCondition)
                 self.__replaseNestedElement(self.__QueryTree, sigmaIndex, pi)
                 self.__replaseNestedElement(self.__QueryTree, piIndex, sigma)
+            else:
+                self.__log("Failed in checking condition ")
+        else:
+            self.__log("Error in rule 5a - PI(SIGMA)")
 
     def __findSigmaWithAndCondition(self, arrayToLookFor):
         res = None
@@ -305,3 +361,8 @@ class SqlOptimizer:
             elif leftDot[0] not in result2:
                 return False
         return True
+
+    def __log(self, toLog):
+        # print("{0}) ---------------- {1} ---------------------".format(self.__logNumber, toLog), self)
+        self.__logNumber = self.__logNumber + 1
+

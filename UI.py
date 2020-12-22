@@ -32,7 +32,7 @@ class OptimizerUI:
         return 'SELECT R, S.B FROM R, S WHERE S.B>4 AND R.A=9 AND R.A=10 '
 
     def __showResult(self, result):
-        print("Result After apply Rule is {0}".fotma(result))
+        print("Result After apply Rule is {0}".format(result))
 
     def __getLegalChoice(self, numberOfOptions):
         while True:
@@ -93,7 +93,7 @@ class OptimizerUI:
             optimizers.append(SqlOptimizer())
             optimizers[i].setQuery(userQuery)
 
-        numberOfRandomRulesToApply = 20
+        numberOfRandomRulesToApply = 50
         for i in range(numberOfOptimizers):
             for _ in range(numberOfRandomRulesToApply):
                 randomNumber = random.randint(0, numberOfRules)
