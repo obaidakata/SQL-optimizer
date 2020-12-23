@@ -18,7 +18,8 @@ class SqlOptimizer:
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
 
     def __initOptions(self):
-        self.__options = ["11b", "4", "4a", "5a", "6 with Cartesian", "6a with Cartesian", "6 with NJOIN", "6a with NJOIN"]
+        self.__options = ["11b", "4", "4a", "5a", "6 with Cartesian", "6a with Cartesian", "6 with NJOIN",
+                          "6a with NJOIN"]
 
     def Optimize(self, i_Rule):
         if i_Rule == self.__options[0]:
@@ -98,13 +99,12 @@ class SqlOptimizer:
                 if self.__isOperator(toPrint):
                     toReturn += "("
                     close = close + 1
-                elif  i < listLen -1:
+                elif i < listLen - 1:
                     toReturn += ", "
-            elif i < listLen -1 :
+            elif i < listLen - 1:
                 toReturn += self.__toString(toPrint) + ', '
             else:
                 toReturn += self.__toString(toPrint)
-
 
         for _ in range(close):
             toReturn += ")"
@@ -125,7 +125,7 @@ class SqlOptimizer:
     def __rule11b(self):
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if sigmaIndex is not None:
-            cartesianIndex = sigmaIndex.copy()# self.__getNextOperatorIndex(sigmaIndex)
+            cartesianIndex = sigmaIndex.copy()  # self.__getNextOperatorIndex(sigmaIndex)
             cartesianIndex[-1] = cartesianIndex[-1] + 1
             sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
             self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
@@ -133,21 +133,22 @@ class SqlOptimizer:
         else:
             self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
 
-    def checkIfConditionContainsOnlySharedColomns(self):
-        return True
-
     def __rule6WithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
             sigma = self.__getNestedElement(self.__QueryTree, res)
+            condition = self.__getSub(sigma, self.__SquareBrackets)
             cartesianIndex = res[-1] + 1
             cartesianTablesIndex = cartesianIndex + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
-            toInsert = ["CARTESIAN", [[sigma, cartesiainTables[0]], cartesiainTables[1]]]
-            self.__QueryTree.pop(cartesianIndex)
-            self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
-            toInsert.reverse()
-            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            if self.checkIfConditionContainsOnlySharedColomns(cartesiainTables[0], condition):
+                toInsert = ["CARTESIAN", [[sigma, cartesiainTables[0]], cartesiainTables[1]]]
+                self.__QueryTree.pop(cartesianIndex)
+                self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
+                toInsert.reverse()
+                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            else:
+                print("Columns aren't in the table.")
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -155,29 +156,59 @@ class SqlOptimizer:
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
             sigma = self.__getNestedElement(self.__QueryTree, res)
+            condition = self.__getSub(sigma, self.__SquareBrackets)
             cartesianIndex = res[-1] + 1
             cartesianTablesIndex = cartesianIndex + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
-            toInsert = ["CARTESIAN", [cartesiainTables[0], [sigma, cartesiainTables[1]]]]
-            self.__QueryTree.pop(cartesianIndex)
-            self.__QueryTree.pop(cartesianIndex) # Pop out catisian tables
-            toInsert.reverse()
-            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            if self.checkIfConditionContainsOnlySharedColomns(cartesiainTables[0], condition):
+                toInsert = ["CARTESIAN", [cartesiainTables[0], [sigma, cartesiainTables[1]]]]
+                self.__QueryTree.pop(cartesianIndex)
+                self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
+                toInsert.reverse()
+                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            else:
+                print("Columns aren't in the table.")
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
+
+    def __removeDuplicatesFromList(self, i_list):
+        mylist = list(dict.fromkeys(i_list))
+        return mylist
+
+    def __getColumn(self, condition):
+        dotSides = condition.split(".")
+        return dotSides[1]
+
+    def checkIfConditionContainsOnlySharedColomns(self, table, sigma_condition):
+        splitted_cond = self.__splitSigmaCond(sigma_condition)
+        splitted_cond = self.__removeDuplicatesFromList(splitted_cond)
+        # check if there are more than one table in the condition.
+        for i in range(len(splitted_cond)):
+            if table not in splitted_cond[i]:
+                return False
+        #check if all the columns in the condition belongs to the same table.
+        for i in range(len(splitted_cond)):
+            rightDot = self.__getColumn(splitted_cond[i])
+            if not self.__checkIfColumnInTable(table, rightDot):
+                return False
+        return True
 
     def __rule6WithNjoin(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "NJOIN")
         if res is not None:
             sigma = self.__getNestedElement(self.__QueryTree, res)
+            condition = self.__getSub(sigma, self.__SquareBrackets)
             nJoinIndex = res[-1] + 1
             nJoinTablesIndex = nJoinIndex + 1
             nJoinTables = self.__QueryTree[nJoinTablesIndex]
-            toInsert = ["NJOIN", [[sigma, nJoinTables[0]], nJoinTables[1]]]
-            self.__QueryTree.pop(nJoinIndex)
-            self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
-            toInsert.reverse()
-            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            if self.checkIfConditionContainsOnlySharedColomns(nJoinTables[0], condition):
+                toInsert = ["NJOIN", [[sigma, nJoinTables[0]], nJoinTables[1]]]
+                self.__QueryTree.pop(nJoinIndex)
+                self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
+                toInsert.reverse()
+                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            else:
+                print("Columns aren't in the table.")
         else:
             self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
 
@@ -185,14 +216,18 @@ class SqlOptimizer:
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "NJOIN")
         if res is not None:
             sigma = self.__getNestedElement(self.__QueryTree, res)
+            condition = self.__getSub(sigma, self.__SquareBrackets)
             nJoinIndex = res[-1] + 1
             nJoinTablesIndex = nJoinIndex + 1
             nJoinTables = self.__QueryTree[nJoinTablesIndex]
-            toInsert = ["CARTESIAN", [nJoinTables[0], [sigma, nJoinTables[1]]]]
-            self.__QueryTree.pop(nJoinIndex)
-            self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
-            toInsert.reverse()
-            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            if self.checkIfConditionContainsOnlySharedColomns(nJoinTables[1], condition):
+                toInsert = ["CARTESIAN", [nJoinTables[0], [sigma, nJoinTables[1]]]]
+                self.__QueryTree.pop(nJoinIndex)
+                self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
+                toInsert.reverse()
+                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            else:
+                print("Columns aren't in the table.")
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
@@ -287,7 +322,6 @@ class SqlOptimizer:
                 if pathTail is not None:
                     toReturn = [i] + pathTail
 
-
         return toReturn
 
     def __getNestedElement(self, arrayToLookFor, indexs):
@@ -300,7 +334,7 @@ class SqlOptimizer:
         numberOfIndexes = len(indexs)
         temp = arrayToLookFor
         for i in range(numberOfIndexes):
-            if i == numberOfIndexes -1:
+            if i == numberOfIndexes - 1:
                 temp.pop(indexs[i])
                 if newElement is not None:
                     temp.insert(indexs[i], newElement)
@@ -329,38 +363,50 @@ class SqlOptimizer:
                 newArray[i] = subArray
         return newArray
 
-    def __checkPIAndSigmaConds(self, sigmaCondition, piCondition):
-        splitRes = None
-        splittedAnd = None
-        splitRes3 = None
-        if "AND" in sigmaCondition and not "OR" in sigmaCondition:
-            splitRes = sigmaCondition.split("AND")
-        elif "OR" in sigmaCondition and not "AND" in sigmaCondition:
-            splitRes = sigmaCondition.split("AND")
+    def __splitAndOr(self, condition):
+        if "AND" in condition and not "OR" in condition:
+            splitRes = condition.split("AND")
+        elif "OR" in condition and not "AND" in condition:
+            splitRes = condition.split("AND")
         else:
-            splittedAnd = sigmaCondition.split("AND")
+            splittedAnd = condition.split("AND")
             splitRes = "".join(splittedAnd).split("OR")
-        splitedRes2 = "".join(splitRes)
+        return splitRes
+
+    def __splitOfOperators(self, condition):
+
         for i in range(len(self.__LegalOperators)):
-            if self.__LegalOperators[i] in splitedRes2:
-                splitRes3 = splitedRes2.split(self.__LegalOperators[i])
-                splitedRes2 = "".join(splitRes3)
-        s = ''.join(splitRes3)
+            if self.__LegalOperators[i] in condition:
+                splitRes3 = condition.split(self.__LegalOperators[i])
+                condition = "".join(splitRes3)
+        return splitRes3
+
+    def __splitSigmaCond(self, sigmaCond):
+        splitRes = self.__splitAndOr(sigmaCond)
+        splitedRes2 = "".join(splitRes)
+        splitResOp = self.__splitOfOperators(splitedRes2)
+        s = ''.join(splitResOp)
         s1 = " ".join(s.split())
         result = ''.join([i for i in s1 if not i.isdigit()]).split(" ")
+        return result
+
+    def __checkPIAndSigmaConds(self, sigmaCondition, piCondition):
+        result = self.__splitSigmaCond(sigmaCondition)
         result2 = piCondition.split(",")
         result2 = [x.strip(' ') for x in result2]
         for i in range(len(result)):
-            leftDot = result[i].split(".")
+            dotSides = result[i].split(".")
             if result[i] in result2:
                 continue;
-            elif leftDot[0] not in result2:
+            elif dotSides[0] not in result2:
                 return False
+        return True
+
+    def __checkIfColumnInTable(self, table, column):
+        if column not in self.__Schema[table]:
+            return False
         return True
 
     def __log(self, toLog):
         # print("{0}) ---------------- {1} ---------------------".format(self.__logNumber, toLog), self)
         self.__logNumber = self.__logNumber + 1
-
-    def setSchema(self, schema):
-        self.__Schema = schema
