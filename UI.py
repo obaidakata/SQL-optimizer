@@ -1,4 +1,5 @@
 from SqlOptimizer import SqlOptimizer
+from FileParser import FileParser
 import random
 
 class OptimizerUI:
@@ -7,12 +8,16 @@ class OptimizerUI:
     __query = None
     LastAppliedRule = None
     __optimizer = None
+    __fileParser = None
+    __schema = None
     def __init__(self):
         self.__parts = ["1", "2", "3"]
         self.__optimizer = SqlOptimizer()
         self.__rules = self.__optimizer.GetOptions()
         self.__rules.append("Back")
         self.__back = len(self.__rules) + 1
+        self.__fileParser = FileParser()
+        self.schema = self.__fileParser.Parse("statistics.txt")
 
     def show(self):
         self.__getQueryFromUser()
@@ -29,6 +34,7 @@ class OptimizerUI:
     def __getQueryFromUser(self):
         # self.__query = input("Please Type Your SQL query:")
         # self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
+        # only equal
         return 'SELECT R, S.B FROM R, S WHERE S.B>4 AND R.A=9 AND R.A=10 '
 
     def __showResult(self, result):
@@ -68,9 +74,13 @@ class OptimizerUI:
                 print("{0}) Implement Rule {1}".format(i, option))
                 i = i + 1
         print("{0}) Back".format(i))
+
+
         optimizer = SqlOptimizer()
+        optimizer.setSchema(self.__schema)
         userQuery = self.__getQueryFromUser()
         optimizer.setQuery(userQuery)
+        optimizer.setSchema(self.schema)
         print(optimizer)
         while True:
             userChoice = self.__getLegalChoice(numberOfOption)
