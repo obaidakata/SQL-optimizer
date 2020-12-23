@@ -8,13 +8,11 @@ class SqlOptimizer:
     __logNumber = 1
 
     def __init__(self):
-        self.__initSchema()
         self.__InitLegalOperators()
         self.__initOptions()
 
-    def __initSchema(self):
-        self.__Schema["R"] = {"A": "int", "B": "int", "C": "int", "D": "int", "E": "int"}
-        self.__Schema["S"] = {"D": "int", "E": "int", "F": "int", "H": "int", "I": "int"}
+    def setSchema(self, i_Schema):
+        self.__Schema = i_Schema
 
     def __InitLegalOperators(self):
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
@@ -129,6 +127,7 @@ class SqlOptimizer:
         if sigmaIndex is not None:
             cartesianIndex = sigmaIndex.copy()  # self.__getNextOperatorIndex(sigmaIndex)
             cartesianIndex[-1] = cartesianIndex[-1] + 1
+            sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
             self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
             self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
         else:
