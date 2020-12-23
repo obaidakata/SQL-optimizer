@@ -14,7 +14,6 @@ class OptimizerUI:
         self.__parts = ["1", "2", "3"]
         self.__optimizer = SqlOptimizer()
         self.__rules = self.__optimizer.GetOptions()
-        self.__rules.append("Back")
         self.__back = len(self.__rules) + 1
         self.__fileParser = FileParser()
         self.schema = self.__fileParser.Parse("statistics.txt")
@@ -77,10 +76,7 @@ class OptimizerUI:
 
 
         optimizer = SqlOptimizer()
-        optimizer.setSchema(self.__schema)
-        userQuery = self.__getQueryFromUser()
-        optimizer.setQuery(userQuery)
-        optimizer.setSchema(self.schema)
+        self.__SetOptimizer(optimizer)
         print(optimizer)
         while True:
             userChoice = self.__getLegalChoice(numberOfOption)
@@ -120,3 +116,8 @@ class OptimizerUI:
         print("In progress")
         input("Press any key to return to menu")
         self.__showStartMenu()
+
+    def __SetOptimizer(self, i_Optimizer):
+        i_Optimizer.setSchema(self.__schema)
+        userQuery = self.__getQueryFromUser()
+        i_Optimizer.setQuery(userQuery)

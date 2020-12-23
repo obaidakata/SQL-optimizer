@@ -1,6 +1,5 @@
 import os.path
 import sys
-from os import path
 
 class FileParser:
     __lines = []
