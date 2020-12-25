@@ -16,7 +16,8 @@ class OptimizerUI:
         self.__rules = self.__optimizer.GetOptions()
         self.__back = len(self.__rules) + 1
         self.__fileParser = FileParser()
-        self.schema = self.__fileParser.Parse("statistics.txt")
+        self.__fileParser.Parse("statistics.txt")
+        self.__schema = self.__fileParser.getSchema()
 
     def show(self):
         self.__getQueryFromUser()
@@ -34,7 +35,7 @@ class OptimizerUI:
         # self.__query = input("Please Type Your SQL query:")
         # self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
         # only equal
-        return 'SELECT R, S.B FROM R, S WHERE S.B>4 AND R.A=9 AND R.A=10 '
+        return 'SELECT R, S.B FROM R, S WHERE R.B=4 AND R.A=9 AND R.A=10 '
 
     def __showResult(self, result):
         print("Result After apply Rule is {0}".format(result))
@@ -93,11 +94,10 @@ class OptimizerUI:
         results = []
         optimizers = []
         numberOfOptimizers = 100
-        userQuery = self.__getQueryFromUser()
         for i in range(numberOfOptimizers):
             results.append("Empty")
             optimizers.append(SqlOptimizer())
-            optimizers[i].setQuery(userQuery)
+            self.__SetOptimizer(optimizers[i])
 
         numberOfRandomRulesToApply = 50
         for i in range(numberOfOptimizers):
@@ -118,6 +118,8 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __SetOptimizer(self, i_Optimizer):
+        schemaSize = self.__fileParser.getSchemaSize()
+        i_Optimizer.setSchemaSize(schemaSize)
         i_Optimizer.setSchema(self.__schema)
         userQuery = self.__getQueryFromUser()
         i_Optimizer.setQuery(userQuery)

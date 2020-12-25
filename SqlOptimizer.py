@@ -1,5 +1,6 @@
 class SqlOptimizer:
     __Schema = {}
+    __SchemaSize = {}
     __LegalOperators = []
     __QueryTree = []
     __SquareBrackets = ['[', ']']
@@ -13,6 +14,9 @@ class SqlOptimizer:
 
     def setSchema(self, i_Schema):
         self.__Schema = i_Schema
+
+    def setSchemaSize(self, i_SchemaSize):
+        self.__SchemaSize = i_SchemaSize
 
     def __InitLegalOperators(self):
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
@@ -41,6 +45,7 @@ class SqlOptimizer:
         else:
             print("Error {0} is not rule ".format(i_Rule))
         optimizedQuery = self.__toString(self.__QueryTree)
+        self.__calculateSizeEstimation(self.__QueryTree[0], [0])
         return optimizedQuery
 
     def GetOptions(self):
@@ -50,7 +55,10 @@ class SqlOptimizer:
         fromSubQuery = i_Query.split("FROM")
         subQuery = fromSubQuery[1].split("WHERE")
         subQuery = subQuery[0].strip()
-        tables = subQuery.split(',')
+        tmpTables = subQuery.split(',')
+        tables = []
+        for table in tmpTables:
+            tables.append(table.strip())
         cartesian = "CARTESIAN"
 
         whereSubQuery = i_Query.split("WHERE")
@@ -65,15 +73,6 @@ class SqlOptimizer:
         pi = ' '.join(pi.split())
 
         self.__QueryTree = [pi, sigma, cartesian, tables]
-
-    def _getTheProperJoinFormat(self, i_Condition):
-        format = "TJOIN[{0}]({1})"
-        andExist = "AND" in i_Condition
-        orExist = "OR" in i_Condition
-        if not andExist and not orExist and "=" in i_Condition:
-            format = "NJOIN[{0}]({1})"
-
-        return format
 
     def __getSub(self, i_Sub, i_Parenthesis):
         start = i_Sub.find(i_Parenthesis[0])
@@ -141,14 +140,14 @@ class SqlOptimizer:
             cartesianIndex = res[-1] + 1
             cartesianTablesIndex = cartesianIndex + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
-            if self.checkIfConditionContainsOnlySharedColomns(cartesiainTables[0], condition):
-                toInsert = ["CARTESIAN", [[sigma, cartesiainTables[0]], cartesiainTables[1]]]
-                self.__QueryTree.pop(cartesianIndex)
-                self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
-                toInsert.reverse()
-                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
-            else:
-                print("Columns aren't in the table.")
+            # if self.checkIfConditionContainsOnlySharedColomns(cartesiainTables[0], condition):
+            toInsert = ["CARTESIAN", [[sigma, cartesiainTables[0]], cartesiainTables[1]]]
+            self.__QueryTree.pop(cartesianIndex)
+            self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            # else:
+            #     print("Columns aren't in the table.")
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -160,14 +159,14 @@ class SqlOptimizer:
             cartesianIndex = res[-1] + 1
             cartesianTablesIndex = cartesianIndex + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
-            if self.checkIfConditionContainsOnlySharedColomns(cartesiainTables[0], condition):
-                toInsert = ["CARTESIAN", [cartesiainTables[0], [sigma, cartesiainTables[1]]]]
-                self.__QueryTree.pop(cartesianIndex)
-                self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
-                toInsert.reverse()
-                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
-            else:
-                print("Columns aren't in the table.")
+            # if self.checkIfConditionContainsOnlySharedColomns(cartesiainTables[0], condition):
+            toInsert = ["CARTESIAN", [cartesiainTables[0], [sigma, cartesiainTables[1]]]]
+            self.__QueryTree.pop(cartesianIndex)
+            self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            # else:
+            #     print("Columns aren't in the table.")
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -186,10 +185,10 @@ class SqlOptimizer:
         for i in range(len(splitted_cond)):
             if table not in splitted_cond[i]:
                 return False
-        #check if all the columns in the condition belongs to the same table.
+        # check if all the columns in the condition belongs to the same table.
         for i in range(len(splitted_cond)):
             rightDot = self.__getColumn(splitted_cond[i])
-            if not self.__checkIfColumnInTable(table, rightDot):
+            if not self.__checkIfColumnInTable(str(table), rightDot):
                 return False
         return True
 
@@ -410,3 +409,64 @@ class SqlOptimizer:
     def __log(self, toLog):
         # print("{0}) ---------------- {1} ---------------------".format(self.__logNumber, toLog), self)
         self.__logNumber = self.__logNumber + 1
+
+    def __calculateSizeEstimation(self, i_ToCalculate, i_operatorIndex):
+        operandsSize = []
+        if self.__isOperator(i_ToCalculate):
+            # calculate operand size
+            if i_ToCalculate.startswith("SIGMA") or i_ToCalculate.startswith("PI"):
+                operandIndex = self.__getNextOperatorIndex(i_operatorIndex)
+                operand = self.__getNestedElement(self.__QueryTree, operandIndex)
+                operandsSize.append(self.__calculateSizeEstimation(operand, operandIndex))
+            elif i_ToCalculate.startswith("CARTESIAN") or i_ToCalculate.startswith("NJOIN"):
+                firstOperandIndex = self.__getNextOperatorIndex(i_operatorIndex)
+                firstOperand = self.__getNestedElement(self.__QueryTree, firstOperandIndex)
+                firstOperandSize = self.__calculateSizeEstimation(firstOperand, firstOperandIndex)
+
+                secondOperandIndex = firstOperandIndex
+                secondOperandIndex[-1] = secondOperandIndex[-1] + 1
+                secondOperand = self.__getNestedElement(self.__QueryTree, secondOperandIndex)
+                secondOperandSize = self.__calculateSizeEstimation(secondOperand, secondOperandIndex)
+
+                operandsSize.append(firstOperandSize)
+                operandsSize.append(secondOperandSize)
+        elif isinstance(i_ToCalculate, list):
+            elementIndex = i_operatorIndex.copy()
+            elementIndex.append(0)
+            operand = self.__getNestedElement(self.__QueryTree, elementIndex)
+            operandsSize.append(self.__calculateSizeEstimation(operand, elementIndex))
+        else:
+            operandsSize.append(self.__getTableSize(i_ToCalculate))
+
+        return self.__calculateTotalSize(i_ToCalculate, operandsSize)
+
+
+
+    def __getTableSize(self, table):
+        toReturn = None
+        table = str(table).strip()
+        if table in self.__SchemaSize:
+            toReturn =  int(self.__SchemaSize[table])
+        return toReturn
+
+    def __calculateTotalSize(self, i_ToCalculate, operandsSize):
+        if self.__isOperator(i_ToCalculate):
+            operandType = ""
+            if i_ToCalculate.startswith("SIGMA"):
+                operandType = "SIGMA"
+                size = operandsSize[0] + 3
+            elif i_ToCalculate.startswith("PI"):
+                operandType = "PI"
+                size = operandsSize[0] + 5
+            elif i_ToCalculate.startswith("CARTESIAN"):
+                operandType = "CARTESIAN"
+                size = operandsSize[0] * operandsSize[1]
+            elif i_ToCalculate.startswith("NJOIN"):
+                operandType = "NJOIN"
+                size = operandsSize[0] + operandsSize[1]
+
+            print("{0}({1})".format(operandType, size))
+            return size
+        else:
+            tableSize = operandsSize[0]
+            return tableSize
