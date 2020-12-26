@@ -92,7 +92,7 @@ class OptimizerUI:
         numberOfRules = len(self.__rules) -2 # Back is not allowed
         results = []
         optimizers = []
-        numberOfOptimizers = 100
+        numberOfOptimizers = 1000
         for i in range(numberOfOptimizers):
             results.append("Empty")
             optimizers.append(SqlOptimizer())
