@@ -1,3 +1,4 @@
+from Schema import Schema
 class SqlOptimizer:
     __Schema = {}
     __SchemaSize = {}
@@ -7,16 +8,18 @@ class SqlOptimizer:
     __RoundedBrackets = ['(', ')']
     __options = []
     __logNumber = 1
-
+    __sc = {}
     def __init__(self):
         self.__InitLegalOperators()
         self.__initOptions()
 
-    def setSchema(self, i_Schema):
-        self.__Schema = i_Schema
-
-    def setSchemaSize(self, i_SchemaSize):
-        self.__SchemaSize = i_SchemaSize
+    def setSchema(self, i_FirstSchema, i_SecondSchema):
+        self.__Schema[i_FirstSchema.Name] = i_FirstSchema.Columns
+        self.__Schema[i_SecondSchema.Name] = i_SecondSchema.Columns
+        self.__SchemaSize[i_FirstSchema.Name] = i_FirstSchema.RowSize
+        self.__SchemaSize[i_SecondSchema.Name] = i_SecondSchema.RowSize
+        self.__sc[i_FirstSchema.Name] = i_FirstSchema
+        self.__sc[i_SecondSchema.Name] = i_SecondSchema
 
     def __InitLegalOperators(self):
         self.__LegalOperators = ["<=", ">=", "<>", "<", ">", "="]
@@ -45,7 +48,7 @@ class SqlOptimizer:
         else:
             print("Error {0} is not rule ".format(i_Rule))
         optimizedQuery = self.__toString(self.__QueryTree)
-        self.__calculateSizeEstimation(self.__QueryTree[0], [0])
+        self.__printSizeEstimation()
         return optimizedQuery
 
     def GetOptions(self):
@@ -200,14 +203,14 @@ class SqlOptimizer:
             nJoinIndex = res[-1] + 1
             nJoinTablesIndex = nJoinIndex + 1
             nJoinTables = self.__QueryTree[nJoinTablesIndex]
-            if self.checkIfConditionContainsOnlySharedColomns(nJoinTables[0], condition):
-                toInsert = ["NJOIN", [[sigma, nJoinTables[0]], nJoinTables[1]]]
-                self.__QueryTree.pop(nJoinIndex)
-                self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
-                toInsert.reverse()
-                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
-            else:
-                print("Columns aren't in the table.")
+            # if self.checkIfConditionContainsOnlySharedColomns(nJoinTables[0], condition):
+            toInsert = ["NJOIN", [[sigma, nJoinTables[0]], nJoinTables[1]]]
+            self.__QueryTree.pop(nJoinIndex)
+            self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            # else:
+            #     print("Columns aren't in the table.")
         else:
             self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
 
@@ -219,14 +222,14 @@ class SqlOptimizer:
             nJoinIndex = res[-1] + 1
             nJoinTablesIndex = nJoinIndex + 1
             nJoinTables = self.__QueryTree[nJoinTablesIndex]
-            if self.checkIfConditionContainsOnlySharedColomns(nJoinTables[1], condition):
-                toInsert = ["CARTESIAN", [nJoinTables[0], [sigma, nJoinTables[1]]]]
-                self.__QueryTree.pop(nJoinIndex)
-                self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
-                toInsert.reverse()
-                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
-            else:
-                print("Columns aren't in the table.")
+            # if self.checkIfConditionContainsOnlySharedColomns(nJoinTables[1], condition):
+            toInsert = ["CARTESIAN", [nJoinTables[0], [sigma, nJoinTables[1]]]]
+            self.__QueryTree.pop(nJoinIndex)
+            self.__QueryTree.pop(nJoinIndex)  # Pop out nJoin tables
+            toInsert.reverse()
+            self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            # else:
+            #     print("Columns aren't in the table.")
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
@@ -410,63 +413,54 @@ class SqlOptimizer:
         # print("{0}) ---------------- {1} ---------------------".format(self.__logNumber, toLog), self)
         self.__logNumber = self.__logNumber + 1
 
-    def __calculateSizeEstimation(self, i_ToCalculate, i_operatorIndex):
-        operandsSize = []
+    def __printSizeEstimation(self):
+        firstElement = self.__QueryTree[0]
+        if self.__isOperator(firstElement):
+            innerTable = self.__buildInnerSchema(self.__QueryTree[1], [1])
+            res = self.__calculateOperatorSize(firstElement, innerTable)
+
+    def __calculateOperatorSize(self, operator, schemas):
+        if self.__isOperator(operator):
+            if operator.startswith("SIGMA"):
+                res = Schema.applySigma(schemas)
+            elif operator.startswith("PI"):
+                res = Schema.applyPi(schemas)
+            elif operator.startswith("CARTESIAN"):
+                res = Schema.applyCartesian(schemas[0], schemas[1])
+            elif operator.startswith("NJOIN"):
+                res = Schema.applyJoin(schemas[0], schemas[1])
+            print("Apply {0} on {1} table -> table size {2}".format(operator, res.Name, res.RowCount))
+            return res
+        return None
+
+    def __buildInnerSchema(self, i_ToCalculate, i_operatorIndex):
+        innerSchema = None
         if self.__isOperator(i_ToCalculate):
             # calculate operand size
             if i_ToCalculate.startswith("SIGMA") or i_ToCalculate.startswith("PI"):
                 operandIndex = self.__getNextOperatorIndex(i_operatorIndex)
                 operand = self.__getNestedElement(self.__QueryTree, operandIndex)
-                operandsSize.append(self.__calculateSizeEstimation(operand, operandIndex))
+                operand = self.__buildInnerSchema(operand, operandIndex)
+                innerSchema = self.__calculateOperatorSize(i_ToCalculate, operand)
             elif i_ToCalculate.startswith("CARTESIAN") or i_ToCalculate.startswith("NJOIN"):
+                schems = []
                 firstOperandIndex = self.__getNextOperatorIndex(i_operatorIndex)
                 firstOperand = self.__getNestedElement(self.__QueryTree, firstOperandIndex)
-                firstOperandSize = self.__calculateSizeEstimation(firstOperand, firstOperandIndex)
+                schems.append(self.__buildInnerSchema(firstOperand, firstOperandIndex))
 
                 secondOperandIndex = firstOperandIndex
                 secondOperandIndex[-1] = secondOperandIndex[-1] + 1
                 secondOperand = self.__getNestedElement(self.__QueryTree, secondOperandIndex)
-                secondOperandSize = self.__calculateSizeEstimation(secondOperand, secondOperandIndex)
+                schems.append(self.__buildInnerSchema(secondOperand, secondOperandIndex))
 
-                operandsSize.append(firstOperandSize)
-                operandsSize.append(secondOperandSize)
+                innerSchema = self.__calculateOperatorSize(i_ToCalculate, schems)
+
         elif isinstance(i_ToCalculate, list):
             elementIndex = i_operatorIndex.copy()
             elementIndex.append(0)
             operand = self.__getNestedElement(self.__QueryTree, elementIndex)
-            operandsSize.append(self.__calculateSizeEstimation(operand, elementIndex))
-        else:
-            operandsSize.append(self.__getTableSize(i_ToCalculate))
+            innerSchema = self.__buildInnerSchema(operand, elementIndex)
+        else :
+            innerSchema = self.__sc[str(i_ToCalculate)]
 
-        return self.__calculateTotalSize(i_ToCalculate, operandsSize)
-
-
-
-    def __getTableSize(self, table):
-        toReturn = None
-        table = str(table).strip()
-        if table in self.__SchemaSize:
-            toReturn =  int(self.__SchemaSize[table])
-        return toReturn
-
-    def __calculateTotalSize(self, i_ToCalculate, operandsSize):
-        if self.__isOperator(i_ToCalculate):
-            operandType = ""
-            if i_ToCalculate.startswith("SIGMA"):
-                operandType = "SIGMA"
-                size = operandsSize[0] + 3
-            elif i_ToCalculate.startswith("PI"):
-                operandType = "PI"
-                size = operandsSize[0] + 5
-            elif i_ToCalculate.startswith("CARTESIAN"):
-                operandType = "CARTESIAN"
-                size = operandsSize[0] * operandsSize[1]
-            elif i_ToCalculate.startswith("NJOIN"):
-                operandType = "NJOIN"
-                size = operandsSize[0] + operandsSize[1]
-
-            print("{0}({1})".format(operandType, size))
-            return size
-        else:
-            tableSize = operandsSize[0]
-            return tableSize
+        return innerSchema
