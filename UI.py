@@ -9,7 +9,7 @@ class OptimizerUI:
     LastAppliedRule = None
     __optimizer = None
     __fileParser = None
-    __schema = None
+
     def __init__(self):
         self.__parts = ["1", "2", "3"]
         self.__optimizer = SqlOptimizer()
@@ -17,7 +17,6 @@ class OptimizerUI:
         self.__back = len(self.__rules) + 1
         self.__fileParser = FileParser()
         self.__fileParser.Parse("statistics.txt")
-        self.__schema = self.__fileParser.getSchema()
 
     def show(self):
         self.__getQueryFromUser()
@@ -118,8 +117,6 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __SetOptimizer(self, i_Optimizer):
-        schemaSize = self.__fileParser.getSchemaSize()
-        i_Optimizer.setSchemaSize(schemaSize)
-        i_Optimizer.setSchema(self.__schema)
+        i_Optimizer.setSchema(self.__fileParser.getFirstSchema(), self.__fileParser.getSecondSchema())
         userQuery = self.__getQueryFromUser()
         i_Optimizer.setQuery(userQuery)

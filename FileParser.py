@@ -1,11 +1,12 @@
 import os.path
 import sys
 
+from Schema import Schema
+
+
 class FileParser:
-    __lines = []
-    __Schema = {}
-    __SchemaData = {}
-    __SchemaSize = {}
+    __Schemas = []
+
     def __init__(self):
         pass
 
@@ -34,37 +35,30 @@ class FileParser:
 
 
     def __createSchemas(self, i_scheme):
+        newSchema = Schema()
         schema = i_scheme[0]
-        schemaParts = schema.split("(")
-        schemaName = schemaParts[0]
-        schemavariables = schemaParts[1]
-        schemavariables =  schemavariables[:-1]# Delete the ) at the end
-        variables = schemavariables.split(",")
-        variablesDictionary = {}
+        newSchema.Name = schema[0:schema.find('(')]
+        variables = schema[schema.find("(")+1:schema.find(")")].split(",")
         for variable in variables:
             variableParts = variable.split(":")
             variableName = variableParts[0]
             variableType = variableParts[1]
-            variablesDictionary[variableName] = variableType
+            newSchema.Columns[variableName] = variableType
 
-        vaiableDataDictionary = {}
-        vaiablesData = i_scheme[2:]
-        i = 0
-        for variableName in variablesDictionary.keys():
-            parts = vaiablesData[i].split('=')
-            i = i + 1
-            vaiableDataDictionary[variableName] = parts[1]
+        vaiablesData = i_scheme[1:]
+        for data in vaiablesData:
+            parts = data.split('=')
+            if parts[0] in "n_" + newSchema.Name:
+                newSchema.RowCount = parts[1]
+            elif parts[0].startswith("V"):
+                columnName = parts[0]
+                columnName = columnName[columnName.find("(")+1:columnName.find(")")]
+                newSchema.ColumnsSize[columnName] = int(parts[1])
 
-        parts = i_scheme[1].split('=')
-        self.__Schema[schemaName] = variablesDictionary
-        self.__SchemaData[schemaName] = vaiableDataDictionary
-        self.__SchemaSize[schemaName] = parts[1]
+        self.__Schemas.append(newSchema)
 
-    def getSchema(self):
-        return self.__Schema
+    def getFirstSchema(self):
+        return self.__Schemas[0]
 
-    def getSchemaData(self):
-        return self.__SchemaData
-
-    def getSchemaSize(self):
-        return self.__SchemaSize
+    def getSecondSchema(self):
+        return self.__Schemas[1]
