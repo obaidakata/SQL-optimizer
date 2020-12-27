@@ -117,7 +117,7 @@ class Schema:
         #     def
         # else:
         #     orIndex = condition.rfind("OR")
-        # x = 5
+        x = 5
 
     def __getFirstLogicalOperator(self, condition):
         andIndex = condition.rfind("AND")
