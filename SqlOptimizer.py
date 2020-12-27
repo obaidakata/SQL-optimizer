@@ -440,16 +440,17 @@ class SqlOptimizer:
         res = None
         if self.__isOperator(operator):
             if operator.startswith("SIGMA"):
-                res = Schema.applySigma(schemas)
+                condition = self.__getSub(operator, self.__SquareBrackets)
+                res = Schema.applySigma(operator, condition, schemas)
             elif operator.startswith("PI"):
                 columns = self.__getSub(operator, self.__SquareBrackets)
                 columns = self.__getColumns(columns)
-                res = Schema.applyPi(schemas, columns)
+                res = Schema.applyPi(operator, schemas, columns)
             elif operator.startswith("CARTESIAN"):
                 res = Schema.applyCartesian(schemas[0], schemas[1])
             elif operator.startswith("NJOIN"):
                 res = Schema.applyJoin(schemas[0], schemas[1])
-            print("Apply {0} on {1} table -> table size {2}".format(operator, res.Name, res.RowCount))
+            print(res)
         return res
 
     def __buildInnerSchema(self, i_ToCalculate, i_operatorIndex):
