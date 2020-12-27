@@ -433,20 +433,24 @@ class SqlOptimizer:
         if self.__isOperator(firstElement):
             innerTable = self.__buildInnerSchema(self.__QueryTree[1], [1])
             res = self.__calculateOperatorSize(firstElement, innerTable)
+            if res is None:
+                print("Res is None")
 
     def __calculateOperatorSize(self, operator, schemas):
+        res = None
         if self.__isOperator(operator):
             if operator.startswith("SIGMA"):
                 res = Schema.applySigma(schemas)
             elif operator.startswith("PI"):
-                res = Schema.applyPi(schemas)
+                columns = self.__getSub(operator, self.__SquareBrackets)
+                columns = self.__getColumns(columns)
+                res = Schema.applyPi(schemas, columns)
             elif operator.startswith("CARTESIAN"):
                 res = Schema.applyCartesian(schemas[0], schemas[1])
             elif operator.startswith("NJOIN"):
                 res = Schema.applyJoin(schemas[0], schemas[1])
             print("Apply {0} on {1} table -> table size {2}".format(operator, res.Name, res.RowCount))
-            return res
-        return None
+        return res
 
     def __buildInnerSchema(self, i_ToCalculate, i_operatorIndex):
         innerSchema = None
@@ -473,7 +477,15 @@ class SqlOptimizer:
             elementIndex.append(0)
             operand = self.__getNestedElement(self.__QueryTree, elementIndex)
             innerSchema = self.__buildInnerSchema(operand, elementIndex)
-        else :
+        else:
             innerSchema = self.__sc[str(i_ToCalculate)]
 
         return innerSchema
+
+    def __getColumns(self, i_String):
+        i_String = i_String.split(",")
+        toReturn = []
+        for column in i_String:
+            column = column.split(".")
+            toReturn.append(column[1].strip())
+        return toReturn

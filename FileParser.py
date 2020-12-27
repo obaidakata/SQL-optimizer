@@ -53,7 +53,7 @@ class FileParser:
             elif parts[0].startswith("V"):
                 columnName = parts[0]
                 columnName = columnName[columnName.find("(")+1:columnName.find(")")]
-                newSchema.ColumnsSize[columnName] = int(parts[1])
+                newSchema.ColumnsNumberOfUniqueValues[columnName] = int(parts[1])
 
         self.__Schemas.append(newSchema)
 

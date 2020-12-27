@@ -34,7 +34,7 @@ class OptimizerUI:
         # self.__query = input("Please Type Your SQL query:")
         # self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
         # only equal
-        return 'SELECT R, S.B FROM R, S WHERE R.B=4 AND R.A=9 AND R.A=10 '
+        return 'SELECT R.A, S.D FROM R, S WHERE R.B=4 AND R.A=9 AND R.A=10 '
 
     def __showResult(self, result):
         print("Result After apply Rule is {0}".format(result))

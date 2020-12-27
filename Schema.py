@@ -24,11 +24,11 @@ class Schema:
         self.__columns = i_Columns
 
     @property
-    def ColumnsSize(self):
+    def ColumnsNumberOfUniqueValues(self):
         return self.__columnsSize
 
-    @ColumnsSize.setter
-    def ColumnsSize(self, i_ColumnsSize):
+    @ColumnsNumberOfUniqueValues.setter
+    def ColumnsNumberOfUniqueValues(self, i_ColumnsSize):
         self.__columnsSize = i_ColumnsSize
 
     @property
@@ -39,12 +39,18 @@ class Schema:
     def RowCount(self, i_RowCount):
         self.__rowCount = int(i_RowCount)
 
+    def __calculateRowSize(self):
+        self.__rowSize = 0
+        toAdd = 0
+        for columnType in self.__columns.values():
+            if columnType == "INTEGER":
+                toAdd = 4
+            self.__rowSize += toAdd
+
     @property
     def RowSize(self):
         if self.__rowSize is None:
-            self.__rowSize = 0
-            for columnSize in self.__columnsSize.items():
-                self.__rowSize += columnSize[1]
+            self.__calculateRowSize()
         return self.__rowSize
 
     @RowSize.setter
@@ -65,18 +71,24 @@ class Schema:
         schemaToReturn.RowSize = firstSchema.RowSize + secondSchema.RowSize
         schemaToReturn.RowCount = firstSchema.RowCount * secondSchema.RowCount
         schemaToReturn.Columns = Schema.mergeDictionary(firstSchema.Columns, secondSchema.Columns)
-        schemaToReturn.ColumnsSize = Schema.mergeDictionary(firstSchema.ColumnsSize, secondSchema.ColumnsSize)
+        schemaToReturn.ColumnsNumberOfUniqueValues = Schema.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues, secondSchema.ColumnsNumberOfUniqueValues)
         return schemaToReturn
 
     @staticmethod
-    def applyPi(schema):
+    def applyPi(schema, columnsToKeep):
         schemaToReturn = Schema()
         schemaToReturn.Name = "PI({0})".format(schema.Name)
-        schemaToReturn.RowSize = schema.RowSize
-        schemaToReturn.RowCount = schema.RowCount + 3
-        schemaToReturn.Columns = schema.Columns
-        schemaToReturn.ColumnsSize = schema.ColumnsSize
+        schemaToReturn.RowCount = schema.RowCount
+        schema.__keepColumns(columnsToKeep, schemaToReturn)
+        schemaToReturn.__calculateRowSize()
         return schemaToReturn
+
+    def __keepColumns(self, columnsToKeep, schemaToReturn):
+        for column in columnsToKeep:
+            if column in self.Columns:
+                schemaToReturn.Columns[column] = self.Columns[column]
+                schemaToReturn.ColumnsNumberOfUniqueValues[column] = self.ColumnsNumberOfUniqueValues[column]
+
 
     @staticmethod
     def applySigma(schema):
@@ -85,7 +97,7 @@ class Schema:
         schemaToReturn.RowSize = schema.RowSize
         schemaToReturn.RowCount = schema.RowCount + 5
         schemaToReturn.Columns = schema.Columns
-        schemaToReturn.ColumnsSize = schema.ColumnsSize
+        schemaToReturn.ColumnsNumberOfUniqueValues = schema.ColumnsNumberOfUniqueValues
         return schemaToReturn
 
     @staticmethod
@@ -95,5 +107,5 @@ class Schema:
         schemaToReturn.RowSize = firstSchema.RowSize + secondSchema.RowSize
         schemaToReturn.RowCount = firstSchema.RowCount + 7
         schemaToReturn.Columns = Schema.mergeDictionary(firstSchema.Columns, secondSchema.Columns)
-        schemaToReturn.ColumnsSize = Schema.mergeDictionary(firstSchema.ColumnsSize, secondSchema.ColumnsSize)
+        schemaToReturn.ColumnsNumberOfUniqueValues = Schema.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues, secondSchema.ColumnsNumberOfUniqueValues)
         return schemaToReturn
