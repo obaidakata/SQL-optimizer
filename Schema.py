@@ -122,9 +122,9 @@ class Schema:
     def __getFirstLogicalOperator(self, condition):
         andIndex = condition.rfind("AND")
         orIndex = condition.rfind("OR")
-        if andIndex is not -1 and andIndex <= orIndex :
+        if andIndex != -1 and andIndex <= orIndex :
             return "AND"
-        elif orIndex is not -1 and orIndex <= andIndex:
+        elif orIndex != -1 and orIndex <= andIndex:
             return "OR"
         else:
             return None
