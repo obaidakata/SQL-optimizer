@@ -135,6 +135,18 @@ class SqlOptimizer:
         else:
             self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
 
+    # def __conditionContainOnlyColumnsFromTables(self, firstTable, secondTable):
+    #     elements = condition.split(" ")
+    #     columnsThatAppearsInCondition = []
+    #     for element in elements:
+    #         if "=" in element:
+    #             splitOperand = element.split("=")
+    #             leftTable = splitOperand[0].split["."]
+    #             leftTable =
+    #             toReturn += self.__getColumnFromOperand(element) + " "
+    #     return toReturn
+    #     for colo
+
     def __rule6WithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:

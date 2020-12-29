@@ -1,3 +1,6 @@
+import math
+
+
 class Schema:
 
     def __init__(self):
@@ -5,7 +8,7 @@ class Schema:
         self.__columns = {}
         self.__columnsSize = {}
         self.__rowCount = 0
-        self.__rowSize = None
+        self.__rowSize = 0
 
     @property
     def Name(self):
@@ -40,7 +43,6 @@ class Schema:
         self.__rowCount = int(i_RowCount)
 
     def __calculateRowSize(self):
-        self.__rowSize = 0
         toAdd = 0
         for columnType in self.__columns.values():
             if columnType == "INTEGER":
@@ -49,13 +51,12 @@ class Schema:
 
     @property
     def RowSize(self):
-        if self.__rowSize is None:
-            self.__calculateRowSize()
         return self.__rowSize
 
     @RowSize.setter
     def RowSize(self, i_RowSize):
         self.__rowSize = i_RowSize
+        self.__calculateRowSize()
 
 
     @staticmethod
@@ -101,48 +102,93 @@ class Schema:
         schemaToReturn.Columns = schema.Columns
         schemaToReturn.RowCount = schema.RowCount + 5
         schemaToReturn.ColumnsNumberOfUniqueValues = schema.ColumnsNumberOfUniqueValues
+        condition = schemaToReturn.__removeAllTablesNames(condition)
         schemaToReturn.__applyCondition(condition)
         schemaToReturn.__calculateRowSize()
 
         return schemaToReturn
 
-    def __applyCondition(self, condition):
-        # firstLogicalOperator = self.__getFirstLogicalOperator(condition)
-        # if firstLogicalOperator is None:
-        #      return condition
-        # elif firstLogicalOperator in "AND":
-        #     andIndex = condition.rfind("AND")
-        #     leftOperand = condition[0:andIndex +1]
-        #     rightOperand = condition[andIndex:]
-        #     def
-        # else:
-        #     orIndex = condition.rfind("OR")
-        x = 5
+    def __removeAllTablesNames(self, condition):
+        elements = condition.split(" ")
+        toReturn = ""
+        for element in elements:
+            if element.startswith("AND") or element.startswith("OR"):
+                toReturn += element + " "
+            elif "=" in element:
+                toReturn += self.__getColumnFromOperand(element) + " "
+        return  toReturn
 
-    def __getFirstLogicalOperator(self, condition):
-        andIndex = condition.rfind("AND")
-        orIndex = condition.rfind("OR")
-        if andIndex != -1 and andIndex <= orIndex :
-            return "AND"
-        elif orIndex != -1 and orIndex <= andIndex:
-            return "OR"
+    def __applyCondition(self, condition):
+        if "(" in condition:
+            # Deal with complex condition
+            x = 3
+        else:
+            elements = condition.split(" ")
+            for element in elements:
+                element = element.strip()
+                if "AND" in element:
+                    x = 3
+                elif "OR" in element:
+                    x = 4
+                elif "=" in element:
+                    column = self.__getColumnFromOperand(element)
+                    x = 3
+
+    def __getColumnFromOperand(self, operand):
+        if "=" in operand:
+            operand = operand.split("=")
+            operand = operand[0].strip()
+            column = operand.split(".")
+            column = column[1].strip()
+            return  column
         else:
             return None
+
+    def __getAllOperatorsIndexes(self, operator):
+        items = operator.split(' ')
+        toReturn = {}
+        for i in range(len(items)):
+            items[i] = items[i].strip()
+            if items[i] in "AND":
+                toReturn[i] = "AND"
+            elif items[i] in "OR":
+                toReturn[i] = "OR"
+        return toReturn
+
+    def __isConditionLegal(self, i_Condition):
+        stack = []
+        for char in i_Condition:
+            if char == "(":
+                stack.append(char)
+            else:
+                if char == ")":
+                    if not stack:  # check if stack is empty.
+                        return False
+                    stack.pop()
+
+        # Check Empty Stack
+        if stack:
+            return False
+        return True
 
     @staticmethod
     def applyJoin(firstSchema, secondSchema):
         schemaToReturn = Schema()
         schemaToReturn.Name = "NJOIN({0}, {1})".format(firstSchema.Name, secondSchema.Name)
-        schemaToReturn.Columns = firstSchema.__applyIntersectionOnColumns(secondSchema.Columns)
-        schemaToReturn.RowCount = firstSchema.RowCount
+        schemaToReturn.Columns = Schema.mergeDictionary(firstSchema.Columns, secondSchema.Columns)
+        schemaToReturn.RowCount = firstSchema.RowCount * secondSchema.RowCount
         schemaToReturn.__calculateRowSize()
-        schemaToReturn.ColumnsNumberOfUniqueValues = Schema.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues, secondSchema.ColumnsNumberOfUniqueValues)
+        schemaToReturn.__calculateNumberOfUniqueValues(firstSchema, secondSchema)
         return schemaToReturn
 
-    def __applyIntersectionOnColumns(self, secondSchemaColumns):
-        intersectionOfColumns = self.Columns.copy()
-        intersectionOfColumns.update(secondSchemaColumns)
-        return intersectionOfColumns
+    def __calculateNumberOfUniqueValues(self, firstSchema, secondSchema):
+        self.ColumnsNumberOfUniqueValues = self.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues, secondSchema.ColumnsNumberOfUniqueValues)
+        for key in firstSchema.ColumnsNumberOfUniqueValues.keys():
+            if key in secondSchema.ColumnsNumberOfUniqueValues.keys():
+                firstProbability = 1 / firstSchema.ColumnsNumberOfUniqueValues[key]
+                secondProbability = 1 / secondSchema.ColumnsNumberOfUniqueValues[key]
+                totalProbability = firstProbability * secondProbability
+                self.ColumnsNumberOfUniqueValues[key] = math.ceil(self.RowCount * totalProbability)
 
     def __str__(self):
         return "Table Size: |{0}| = {1}".format(self.Name, self.RowCount)
