@@ -108,6 +108,8 @@ class Schema:
 
     def __applyCondition(self, condition):
         conditionAsMath = ""
+        condition = condition.replace("(", "( ")
+        condition = condition.replace(")", " )")
         conditionParts = condition.split(" ")
         for element in conditionParts:
             if "AND" in element:
@@ -123,12 +125,11 @@ class Schema:
                 conditionAsMath += element
 
         try:
-            result = eval(conditionAsMath)
-            self.RowCount = result
+            if conditionAsMath is not "":
+                result = eval(conditionAsMath)
+                self.RowCount = result
         except ValueError:
             print("Can't calculate Condition")
-
-        x = 4
 
     def __calculateProbability(self, operand):
         toReturn = None
@@ -140,10 +141,7 @@ class Schema:
                     toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
                 else:
                     toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
-            else:
-                x = 4
-        else:
-            return toReturn
+        return toReturn
 
     def __getColumnFromOperand(self, operand):
         if "." in operand:

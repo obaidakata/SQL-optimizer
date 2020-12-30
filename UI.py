@@ -34,7 +34,7 @@ class OptimizerUI:
         # self.__query = input("Please Type Your SQL query:")
         # self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
         # only equal
-        return 'SELECT R.A, S.D FROM R, S WHERE R.A=4 AND R.B=9 OR R.C=7 '
+        return 'SELECT R.A, S.D FROM R, S WHERE ((((R.A=4 AND (R.B=9 OR R.C=8))) AND R.C=7))'
 
     def __showResult(self, result):
         print("Result After apply Rule is {0}".format(result))
@@ -101,7 +101,7 @@ class OptimizerUI:
 
 
     def __showPart3(self):
-        numberOfOptimizers = 4
+        numberOfOptimizers = 500
         numberOfRandomRulesToApply = 10
         optimizers = self.__getOptimizers(numberOfOptimizers)
         self.__runRules(optimizers, numberOfRandomRulesToApply)
