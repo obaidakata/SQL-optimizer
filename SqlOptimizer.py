@@ -134,18 +134,6 @@ class SqlOptimizer:
         else:
             self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
 
-    # def __conditionContainOnlyColumnsFromTables(self, firstTable, secondTable):
-    #     elements = condition.split(" ")
-    #     columnsThatAppearsInCondition = []
-    #     for element in elements:
-    #         if "=" in element:
-    #             splitOperand = element.split("=")
-    #             leftTable = splitOperand[0].split["."]
-    #             leftTable =
-    #             toReturn += self.__getColumnFromOperand(element) + " "
-    #     return toReturn
-    #     for colo
-
     def __rule6WithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
@@ -161,7 +149,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(cartesiainTables[0], condition))
+                print("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -180,7 +168,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(cartesiainTables[1], condition))
+                print("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -194,8 +182,7 @@ class SqlOptimizer:
             return dotSides[1]
 
     def __checkIfConditionTable(self, table, condition):
-        conditionCopy = condition
-        splitted_cond = self.__splitSigmaCond(conditionCopy)
+        splitted_cond = self.__splitSigmaCond(condition)
         splitted_cond = self.__removeDuplicatesFromList(splitted_cond)
         # check if there are more than one table in the condition.
         for i in range(len(splitted_cond)):
@@ -238,7 +225,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condition {1}".format(nJoinTables[0], condition))
+                print("Table {0} is not in condtioon {1}".format(nJoinTables[0], condition))
         else:
             self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
 
@@ -257,7 +244,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(nJoinTables[1], condition))
+                print("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
@@ -296,23 +283,38 @@ class SqlOptimizer:
     def __rule4(self):
         res = self.__findSigmaWithAndCondition(self.__QueryTree)
         if res is not None:
+            # Use nested method nsetted
             tempArray = self.__QueryTree
             for i in res:
                 tempArray = tempArray[i]
             sigma = tempArray
             sigmaCondition = self.__getSub(sigma, self.__SquareBrackets)
             if sigmaCondition is not None and "AND" in sigmaCondition:
-                splitted_sigmaCondition = sigmaCondition.split("AND", 1)
-                sec1 = splitted_sigmaCondition[0].strip()
-                sec2 = splitted_sigmaCondition[1].strip()
-                newSigma1 = "SIGMA[{0}]".format(sec1)
-                newSigma2 = "SIGMA[{0}]".format(sec2)
-                toInsert = [newSigma2, newSigma1]
-                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+                conditionParts = self.__getMainAndParts(sigmaCondition)
+                if conditionParts is not None:
+                    newSigma1 = "SIGMA[{0}]".format(conditionParts[0])
+                    newSigma2 = "SIGMA[{0}]".format(conditionParts[1])
+                    toInsert = [newSigma2, newSigma1]
+                    self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
                 self.__log("Rule 4 no AND found")
         else:
             self.__log("rule 4 - No digma with and")
+
+    def __getMainAndParts(self, condition):
+        condition = self.deleteParentheses(condition)
+        elements = condition.split(" ")
+        elementsLen = len(elements)
+        for i in range(elementsLen):
+            element = elements[i]
+            if element.startswith("AND"):
+                leftSubOperand =  " ".join(elements[0:i])
+                rightSubOperand = " ".join(elements[i+1:])
+                if self.areBracketsBalanced(leftSubOperand) and self.areBracketsBalanced(rightSubOperand):
+                    leftSubOperand =self.deleteParentheses(leftSubOperand)
+                    rightSubOperand = self.deleteParentheses(rightSubOperand)
+                    return [leftSubOperand, rightSubOperand]
+        return None
 
     def __findSigmaWithAndCondition(self, arrayToLookFor):
         res = None
@@ -330,6 +332,7 @@ class SqlOptimizer:
                 if pathTail is not None:
                     res = [i] + pathTail
         return res
+
 
 
     def __getOperatorConditionAndOperand(self, arrayToLookFor, i_OperatorName, i_NextOperatorName):
@@ -415,8 +418,6 @@ class SqlOptimizer:
         return splitRes3
 
     def __splitSigmaCond(self, sigmaCond):
-        sigmaCond = sigmaCond.replace('(', '')
-        sigmaCond = sigmaCond.replace(')', '')
         splitRes = self.__splitAndOr(sigmaCond)
         splitedRes2 = "".join(splitRes)
         splitResOp = self.__splitOfOperators(splitedRes2)
@@ -507,3 +508,26 @@ class SqlOptimizer:
             column = column.split(".")
             toReturn.append(column[1].strip())
         return toReturn
+
+    def areBracketsBalanced(self, i_Query):
+        stack = []
+        for char in i_Query:
+            if char == "(":
+                stack.append(char)
+            else:
+                if char == ")":
+                    if not stack:  # check if stack is empty.
+                        return False
+                    stack.pop()
+
+        # Check Empty Stack
+        if stack:
+            return False
+        return True
+
+    def deleteParentheses(self, condition):
+        new = condition
+        if new[0] == '(' and new[-1] == ')' and self.areBracketsBalanced(new[1:-1]):
+            return self.deleteParentheses(new[1:-1])
+        else:
+            return new
