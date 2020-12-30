@@ -161,7 +161,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
+                print("Table {0} is not in condtioon {1}".format(cartesiainTables[0], condition))
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -180,7 +180,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
+                print("Table {0} is not in condtioon {1}".format(cartesiainTables[1], condition))
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -256,7 +256,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
+                print("Table {0} is not in condtioon {1}".format(nJoinTables[1], condition))
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
@@ -411,6 +411,8 @@ class SqlOptimizer:
         return splitRes3
 
     def __splitSigmaCond(self, sigmaCond):
+        sigmaCond = sigmaCond.replace("(", "")
+        sigmaCond = sigmaCond.replace(")", "")
         splitRes = self.__splitAndOr(sigmaCond)
         splitedRes2 = "".join(splitRes)
         splitResOp = self.__splitOfOperators(splitedRes2)
