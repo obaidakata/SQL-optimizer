@@ -161,7 +161,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(cartesiainTables[0], condition))
+                print("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -180,7 +180,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(cartesiainTables[1], condition))
+                print("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -194,8 +194,7 @@ class SqlOptimizer:
             return dotSides[1]
 
     def __checkIfConditionTable(self, table, condition):
-        conditionCopy = condition
-        splitted_cond = self.__splitSigmaCond(conditionCopy)
+        splitted_cond = self.__splitSigmaCond(condition)
         splitted_cond = self.__removeDuplicatesFromList(splitted_cond)
         # check if there are more than one table in the condition.
         for i in range(len(splitted_cond)):
@@ -238,7 +237,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condition {1}".format(nJoinTables[0], condition))
+                print("Table {0} is not in condtioon {1}".format(nJoinTables[0], condition))
         else:
             self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
 
@@ -257,11 +256,30 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(nJoinTables[1], condition))
+                print("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
-
+    def __rule4(self):
+        res = self.__findSigmaWithAndCondition(self.__QueryTree)
+        if res is not None:
+            tempArray = self.__QueryTree
+            for i in res:
+                tempArray = tempArray[i]
+            sigma = tempArray
+            sigmaCondition = self.__getSub(sigma, self.__SquareBrackets)
+            if sigmaCondition is not None and "AND" in sigmaCondition:
+                splitted_sigmaCondition = sigmaCondition.split("AND", 1)
+                sec1 = splitted_sigmaCondition[0].strip()
+                sec2 = splitted_sigmaCondition[1].strip()
+                newSigma1 = "SIGMA[{0}]".format(sec1)
+                newSigma2 = "SIGMA[{0}]".format(sec2)
+                toInsert = [newSigma2, newSigma1]
+                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
+            else:
+                self.__log("Rule 4 no AND found")
+        else:
+            self.__log("rule 4 - No digma with and")
 
     def __rule4a(self):
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "SIGMA")
@@ -293,27 +311,6 @@ class SqlOptimizer:
         else:
             self.__log("Error in rule 5a - PI(SIGMA)")
 
-    def __rule4(self):
-        res = self.__findSigmaWithAndCondition(self.__QueryTree)
-        if res is not None:
-            tempArray = self.__QueryTree
-            for i in res:
-                tempArray = tempArray[i]
-            sigma = tempArray
-            sigmaCondition = self.__getSub(sigma, self.__SquareBrackets)
-            if sigmaCondition is not None and "AND" in sigmaCondition:
-                splitted_sigmaCondition = sigmaCondition.split("AND", 1)
-                sec1 = splitted_sigmaCondition[0].strip()
-                sec2 = splitted_sigmaCondition[1].strip()
-                newSigma1 = "SIGMA[{0}]".format(sec1)
-                newSigma2 = "SIGMA[{0}]".format(sec2)
-                toInsert = [newSigma2, newSigma1]
-                self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
-            else:
-                self.__log("Rule 4 no AND found")
-        else:
-            self.__log("rule 4 - No digma with and")
-
     def __findSigmaWithAndCondition(self, arrayToLookFor):
         res = None
         arrayLen = len(arrayToLookFor)
@@ -330,7 +327,6 @@ class SqlOptimizer:
                 if pathTail is not None:
                     res = [i] + pathTail
         return res
-
 
     def __getOperatorConditionAndOperand(self, arrayToLookFor, i_OperatorName, i_NextOperatorName):
         toReturn = None
@@ -415,8 +411,6 @@ class SqlOptimizer:
         return splitRes3
 
     def __splitSigmaCond(self, sigmaCond):
-        sigmaCond = sigmaCond.replace('(', '')
-        sigmaCond = sigmaCond.replace(')', '')
         splitRes = self.__splitAndOr(sigmaCond)
         splitedRes2 = "".join(splitRes)
         splitResOp = self.__splitOfOperators(splitedRes2)
