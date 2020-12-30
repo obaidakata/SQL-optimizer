@@ -58,7 +58,6 @@ class Schema:
         self.__rowSize = i_RowSize
         self.__calculateRowSize()
 
-
     @staticmethod
     def mergeDictionary(firstDictionary, secondDictionary):
         toReturn = firstDictionary.copy()
@@ -72,7 +71,8 @@ class Schema:
         schemaToReturn.RowSize = firstSchema.RowSize + secondSchema.RowSize
         schemaToReturn.RowCount = firstSchema.RowCount * secondSchema.RowCount
         schemaToReturn.Columns = Schema.mergeDictionary(firstSchema.Columns, secondSchema.Columns)
-        schemaToReturn.ColumnsNumberOfUniqueValues = Schema.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues, secondSchema.ColumnsNumberOfUniqueValues)
+        schemaToReturn.ColumnsNumberOfUniqueValues = Schema.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues,
+                                                                            secondSchema.ColumnsNumberOfUniqueValues)
         return schemaToReturn
 
     @staticmethod
@@ -93,7 +93,6 @@ class Schema:
                 else:
                     print("Error in __keepColumns")
 
-
     @staticmethod
     def applySigma(operator, condition, schema):
         schemaToReturn = Schema()
@@ -102,74 +101,57 @@ class Schema:
         schemaToReturn.Columns = schema.Columns
         schemaToReturn.RowCount = schema.RowCount + 5
         schemaToReturn.ColumnsNumberOfUniqueValues = schema.ColumnsNumberOfUniqueValues
-        condition = schemaToReturn.__removeAllTablesNames(condition)
         schemaToReturn.__applyCondition(condition)
         schemaToReturn.__calculateRowSize()
 
         return schemaToReturn
 
-    def __removeAllTablesNames(self, condition):
-        elements = condition.split(" ")
-        toReturn = ""
-        for element in elements:
-            if element.startswith("AND") or element.startswith("OR"):
-                toReturn += element + " "
-            elif "=" in element:
-                toReturn += self.__getColumnFromOperand(element) + " "
-        return  toReturn
-
     def __applyCondition(self, condition):
-        if "(" in condition:
-            # Deal with complex condition
-            x = 3
+        conditionAsMath = ""
+        conditionParts = condition.split(" ")
+        for element in conditionParts:
+            if "AND" in element:
+                conditionAsMath += "*"
+            elif "OR" in element:
+                conditionAsMath += "+"
+            elif "." in element:
+                calculatedProbably = self.__calculateProbability(element)
+                if calculatedProbably is not None:
+                    calculatedProbably = str(math.ceil(calculatedProbably))
+                    conditionAsMath += calculatedProbably
+            elif "(" in element or ")" in element:
+                conditionAsMath += element
+
+        try:
+            result = eval(conditionAsMath)
+            self.RowCount = result
+        except ValueError:
+            print("Can't calculate Condition")
+
+        x = 4
+
+    def __calculateProbability(self, operand):
+        toReturn = None
+        if "=" in operand:
+            splitOperand = operand.split("=")
+            column = self.__getColumnFromOperand(splitOperand[0])
+            if column is not None and column in self.ColumnsNumberOfUniqueValues:
+                if splitOperand[1].isdecimal():
+                    toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
+                else:
+                    toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
+            else:
+                x = 4
         else:
-            elements = condition.split(" ")
-            for element in elements:
-                element = element.strip()
-                if "AND" in element:
-                    x = 3
-                elif "OR" in element:
-                    x = 4
-                elif "=" in element:
-                    column = self.__getColumnFromOperand(element)
-                    x = 3
+            return toReturn
 
     def __getColumnFromOperand(self, operand):
-        if "=" in operand:
-            operand = operand.split("=")
-            operand = operand[0].strip()
+        if "." in operand:
             column = operand.split(".")
             column = column[1].strip()
-            return  column
+            return column
         else:
             return None
-
-    def __getAllOperatorsIndexes(self, operator):
-        items = operator.split(' ')
-        toReturn = {}
-        for i in range(len(items)):
-            items[i] = items[i].strip()
-            if items[i] in "AND":
-                toReturn[i] = "AND"
-            elif items[i] in "OR":
-                toReturn[i] = "OR"
-        return toReturn
-
-    def __isConditionLegal(self, i_Condition):
-        stack = []
-        for char in i_Condition:
-            if char == "(":
-                stack.append(char)
-            else:
-                if char == ")":
-                    if not stack:  # check if stack is empty.
-                        return False
-                    stack.pop()
-
-        # Check Empty Stack
-        if stack:
-            return False
-        return True
 
     @staticmethod
     def applyJoin(firstSchema, secondSchema):
@@ -182,7 +164,8 @@ class Schema:
         return schemaToReturn
 
     def __calculateNumberOfUniqueValues(self, firstSchema, secondSchema):
-        self.ColumnsNumberOfUniqueValues = self.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues, secondSchema.ColumnsNumberOfUniqueValues)
+        self.ColumnsNumberOfUniqueValues = self.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues,
+                                                                secondSchema.ColumnsNumberOfUniqueValues)
         for key in firstSchema.ColumnsNumberOfUniqueValues.keys():
             if key in secondSchema.ColumnsNumberOfUniqueValues.keys():
                 firstProbability = 1 / firstSchema.ColumnsNumberOfUniqueValues[key]

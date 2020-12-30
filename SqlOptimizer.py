@@ -48,7 +48,6 @@ class SqlOptimizer:
         else:
             print("Error {0} is not rule ".format(i_Rule))
         optimizedQuery = self.__toString(self.__QueryTree)
-        self.__printSizeEstimation()
         return optimizedQuery
 
     def GetOptions(self):
@@ -162,7 +161,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Columns aren't in the table.")
+                print("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -174,14 +173,14 @@ class SqlOptimizer:
             cartesianIndex = res[-1] + 1
             cartesianTablesIndex = cartesianIndex + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
-            if self.__checkIfConditionContainsOnlySharedColumns(cartesiainTables[0], condition):
+            if self.__checkIfConditionContainsOnlySharedColumns(cartesiainTables[1], condition):
                 toInsert = ["CARTESIAN", [cartesiainTables[0], [sigma, cartesiainTables[1]]]]
                 self.__QueryTree.pop(cartesianIndex)
                 self.__QueryTree.pop(cartesianIndex)  # Pop out catisian tables
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Columns aren't in the table.")
+                print("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -190,8 +189,9 @@ class SqlOptimizer:
         return mylist
 
     def __getColumn(self, condition):
-        dotSides = condition.split(".")
-        return dotSides[1]
+        if "." in condition:
+            dotSides = condition.split(".")
+            return dotSides[1]
 
     def __checkIfConditionTable(self, table, condition):
         splitted_cond = self.__splitSigmaCond(condition)
@@ -237,7 +237,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Columns aren't in the table.")
+                print("Table {0} is not in condtioon {1}".format(nJoinTables[0], condition))
         else:
             self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
 
@@ -256,7 +256,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Columns aren't in the table.")
+                print("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
@@ -440,13 +440,13 @@ class SqlOptimizer:
         # print("{0}) ---------------- {1} ---------------------".format(self.__logNumber, toLog), self)
         self.__logNumber = self.__logNumber + 1
 
-    def __printSizeEstimation(self):
+    def getSizeEstimation(self):
         firstElement = self.__QueryTree[0]
         if self.__isOperator(firstElement):
             innerTable = self.__buildInnerSchema(self.__QueryTree[1], [1])
             res = self.__calculateOperatorSize(firstElement, innerTable)
-            if res is None:
-                print("Res is None")
+            if res is not None:
+                return res
 
     def __calculateOperatorSize(self, operator, schemas):
         res = None
@@ -462,7 +462,6 @@ class SqlOptimizer:
                 res = Schema.applyCartesian(schemas[0], schemas[1])
             elif operator.startswith("NJOIN"):
                 res = Schema.applyJoin(schemas[0], schemas[1])
-            print(res)
         return res
 
     def __buildInnerSchema(self, i_ToCalculate, i_operatorIndex):

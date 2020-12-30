@@ -34,7 +34,7 @@ class OptimizerUI:
         # self.__query = input("Please Type Your SQL query:")
         # self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
         # only equal
-        return 'SELECT R.A, S.D FROM R, S WHERE R.B=4 AND R.A=9 AND R.A=10 '
+        return 'SELECT R.A, S.D FROM R, S WHERE R.A=4 AND R.B=9 OR R.C=7 '
 
     def __showResult(self, result):
         print("Result After apply Rule is {0}".format(result))
@@ -89,30 +89,28 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __showPart2(self):
-        numberOfRules = len(self.__rules) -2 # Back is not allowed
-        results = []
-        optimizers = []
-        numberOfOptimizers = 1000
-        for i in range(numberOfOptimizers):
-            results.append("Empty")
-            optimizers.append(SqlOptimizer())
-            self.__SetOptimizer(optimizers[i])
-
-        numberOfRandomRulesToApply = 50
-        for i in range(numberOfOptimizers):
-            for _ in range(numberOfRandomRulesToApply):
-                randomNumber = random.randint(0, numberOfRules)
-                randomRule = self.__rules[randomNumber]
-                results[i] = optimizers[i].Optimize(randomRule)
-
-        uniqeResults = list(set(results))
-        for i in range(len(uniqeResults)):
-            print("{0}----------------{1}".format(i, uniqeResults[i]))
+        numberOfOptimizers = 4
+        numberOfRandomRulesToApply = 10
+        optimizers = self.__getOptimizers(numberOfOptimizers)
+        results = self.__runRules(optimizers, numberOfRandomRulesToApply)
+        for i in range(len(results)):
+            print("{0}----------------{1}".format(i, results[i]))
         input("Press any key to return to menu")
         self.__showStartMenu()
 
+
+
     def __showPart3(self):
-        print("In progress")
+        numberOfOptimizers = 4
+        numberOfRandomRulesToApply = 10
+        optimizers = self.__getOptimizers(numberOfOptimizers)
+        self.__runRules(optimizers, numberOfRandomRulesToApply)
+        for optimizer in optimizers:
+            result = str(optimizer)
+            resultSize = optimizer.getSizeEstimation()
+            print("{0} size = {1}".format(result, resultSize))
+
+
         input("Press any key to return to menu")
         self.__showStartMenu()
 
@@ -120,3 +118,22 @@ class OptimizerUI:
         i_Optimizer.setSchema(self.__fileParser.getFirstSchema(), self.__fileParser.getSecondSchema())
         userQuery = self.__getQueryFromUser()
         i_Optimizer.setQuery(userQuery)
+
+    def __getOptimizers(self, numberOfOptimizers):
+        optimizers = []
+        for i in range(numberOfOptimizers):
+            optimizer = SqlOptimizer()
+            self.__SetOptimizer(optimizer)
+            optimizers.append(optimizer)
+        return optimizers
+
+
+    def __runRules(self, optimizers, numberOfRandomRulesToApply):
+        results = []
+        numberOfRules = len(self.__rules) - 2  # Back is not allowed
+        for optimizer in optimizers:
+            for _ in range(numberOfRandomRulesToApply):
+                randomNumber = random.randint(0, numberOfRules)
+                randomRule = self.__rules[randomNumber]
+                results.append(optimizer.Optimize(randomRule))
+        return results
