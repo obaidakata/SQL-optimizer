@@ -75,10 +75,10 @@ class Schema:
         schemaToReturn.RowSize = firstSchema.RowSize + secondSchema.RowSize
         schemaToReturn.RowCount = firstSchema.RowCount * secondSchema.RowCount
         schemaToReturn.Columns = Schema.mergeDictionary(firstSchema.Columns, secondSchema.Columns)
-        schemaToReturn.__multiplayUniqeValues(firstSchema, secondSchema)
+        schemaToReturn.__multipleUniqueValues(firstSchema, secondSchema)
         return schemaToReturn
 
-    def __multiplayUniqeValues(self, firstSchema, secondSchema):
+    def __multipleUniqueValues(self, firstSchema, secondSchema):
         self.ColumnsNumberOfUniqueValues = {}
         for key in firstSchema.ColumnsNumberOfUniqueValues.keys():
             if not key in secondSchema.ColumnsNumberOfUniqueValues.keys():
