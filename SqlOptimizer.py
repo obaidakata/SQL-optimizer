@@ -46,7 +46,7 @@ class SqlOptimizer:
         elif i_Rule == self.__options[7]:
             self.__rule6AWithNjoin()
         else:
-            print("Error {0} is not rule ".format(i_Rule))
+            self.__log("Error {0} is not rule ".format(i_Rule))
         optimizedQuery = self.__toString(self.__QueryTree)
         return optimizedQuery
 
@@ -134,6 +134,8 @@ class SqlOptimizer:
         else:
             self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
 
+
+
     def __rule6WithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if res is not None:
@@ -149,7 +151,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
+                self.__log("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
         else:
             self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -168,7 +170,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
+                self.__log("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
         else:
             self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
 
@@ -225,7 +227,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table {0} is not in condtioon {1}".format(nJoinTables[0], condition))
+                self.__log("Table {0} is not in condtioon {1}".format(nJoinTables[0], condition))
         else:
             self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
 
@@ -244,7 +246,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                print("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
+                self.__log("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
         else:
             self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
@@ -459,17 +461,28 @@ class SqlOptimizer:
         res = None
         if self.__isOperator(operator):
             if operator.startswith("SIGMA"):
+                print("input: ", schemas)
                 condition = self.__getSub(operator, self.__SquareBrackets)
                 res = Schema.applySigma(operator, condition, schemas)
+
             elif operator.startswith("PI"):
+                print("input: ", schemas)
                 columns = self.__getSub(operator, self.__SquareBrackets)
                 columns = self.__getColumns(columns)
                 res = Schema.applyPi(operator, schemas, columns)
+
             elif operator.startswith("CARTESIAN"):
+                print("input: ", schemas[0],",", schemas[1])
                 res = Schema.applyCartesian(schemas[0], schemas[1])
+
             elif operator.startswith("NJOIN"):
+                print("input: ", schemas[0], ",", schemas[1])
                 res = Schema.applyJoin(schemas[0], schemas[1])
+
+            print("output:", res)
+            print("------------------------------------------------------")
         return res
+
 
     def __buildInnerSchema(self, i_ToCalculate, i_operatorIndex):
         innerSchema = None

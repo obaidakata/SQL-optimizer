@@ -8,7 +8,7 @@ class Schema:
         self.__columns = {}
         self.__columnsSize = {}
         self.__rowCount = 0
-        self.__rowSize = 0
+        self.__rowSize = None
 
     @property
     def Name(self):
@@ -43,14 +43,18 @@ class Schema:
         self.__rowCount = int(i_RowCount)
 
     def __calculateRowSize(self):
-        toAdd = 0
-        for columnType in self.__columns.values():
-            if columnType == "INTEGER":
-                toAdd = 4
-            self.__rowSize += toAdd
+        if self.__rowSize is None:
+            toAdd = 0
+            self.__rowSize = 0
+            for columnType in self.__columns.values():
+                if columnType == "INTEGER":
+                    toAdd = 4
+                self.__rowSize += toAdd
 
     @property
     def RowSize(self):
+        if self.__rowSize is None:
+            self.__calculateRowSize()
         return self.__rowSize
 
     @RowSize.setter
@@ -71,9 +75,25 @@ class Schema:
         schemaToReturn.RowSize = firstSchema.RowSize + secondSchema.RowSize
         schemaToReturn.RowCount = firstSchema.RowCount * secondSchema.RowCount
         schemaToReturn.Columns = Schema.mergeDictionary(firstSchema.Columns, secondSchema.Columns)
-        schemaToReturn.ColumnsNumberOfUniqueValues = Schema.mergeDictionary(firstSchema.ColumnsNumberOfUniqueValues,
-                                                                            secondSchema.ColumnsNumberOfUniqueValues)
+        schemaToReturn.__multiplayUniqeValues(firstSchema, secondSchema)
         return schemaToReturn
+
+    def __multiplayUniqeValues(self, firstSchema, secondSchema):
+        self.ColumnsNumberOfUniqueValues = {}
+        for key in firstSchema.ColumnsNumberOfUniqueValues.keys():
+            if not key in secondSchema.ColumnsNumberOfUniqueValues.keys():
+                valueInFirstSchema = firstSchema.ColumnsNumberOfUniqueValues[key]
+                self.ColumnsNumberOfUniqueValues[key] = valueInFirstSchema * secondSchema.RowCount
+            else:
+                # TODO: check if ok
+                valueInFirstSchema = firstSchema.ColumnsNumberOfUniqueValues[key] * firstSchema.RowCount
+                valueInSecondSchema = secondSchema.ColumnsNumberOfUniqueValues[key]
+                self.ColumnsNumberOfUniqueValues[key] = valueInFirstSchema * valueInSecondSchema
+
+        for key in secondSchema.ColumnsNumberOfUniqueValues.keys():
+            if not key in firstSchema.ColumnsNumberOfUniqueValues.keys():
+                valueInSecondSchema = secondSchema.ColumnsNumberOfUniqueValues[key]
+                self.ColumnsNumberOfUniqueValues[key] = valueInSecondSchema * firstSchema.RowCount
 
     @staticmethod
     def applyPi(operator, schema, columnsToKeep):
@@ -99,7 +119,7 @@ class Schema:
         schemaToReturn.Name = "{0}({1})".format(operator, schema.Name)
         schemaToReturn.RowSize = schema.RowSize
         schemaToReturn.Columns = schema.Columns
-        schemaToReturn.RowCount = schema.RowCount + 5
+        schemaToReturn.RowCount = schema.RowCount
         schemaToReturn.ColumnsNumberOfUniqueValues = schema.ColumnsNumberOfUniqueValues
         schemaToReturn.__applyCondition(condition)
         schemaToReturn.__calculateRowSize()
@@ -128,7 +148,7 @@ class Schema:
             if conditionAsMath is not "":
                 result = eval(conditionAsMath)
                 self.RowCount = result
-        except ValueError:
+        except SyntaxError:
             print("Can't calculate Condition")
 
     def __calculateProbability(self, operand):
@@ -140,7 +160,9 @@ class Schema:
                 if splitOperand[1].isdecimal():
                     toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
                 else:
+                    secondColumn = self.__getColumnFromOperand(splitOperand[1])
                     toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
+                    toReturn *= self.ColumnsNumberOfUniqueValues[secondColumn]
         return toReturn
 
     def __getColumnFromOperand(self, operand):
@@ -172,4 +194,4 @@ class Schema:
                 self.ColumnsNumberOfUniqueValues[key] = math.ceil(self.RowCount * totalProbability)
 
     def __str__(self):
-        return "Table Size: |{0}| = {1}".format(self.Name, self.RowCount)
+        return "n_{0} = {1}, R_{0} = {2}".format(self.Name, self.RowCount, self.RowSize)

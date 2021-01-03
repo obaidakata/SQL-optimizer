@@ -19,50 +19,56 @@ class OptimizerUI:
         self.__fileParser.Parse("statistics.txt")
 
     def show(self):
-        self.__getQueryFromUser()
         self.__showStartMenu()
 
-    def __isUserChoiceLegal(self, userChoice, maxValue):
+    def __isUserChoiceLegal(self, userChoice, minValue, maxValue):
         isLegal = False
         if userChoice.isnumeric():
             userChoiceAsInt = int(userChoice)
-            isLegal = userChoiceAsInt >= 1 and userChoiceAsInt <= maxValue
+            isLegal = userChoiceAsInt >= minValue and userChoiceAsInt <= maxValue
 
         return isLegal
 
     def __getQueryFromUser(self):
         # self.__query = input("Please Type Your SQL query:")
-        # self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.B>4 AND R.A=10 AND R.A=9'
+        self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.D=4 AND R.A=10'
         # only equal
-        return 'SELECT R.A, S.D FROM R, S WHERE ((((R.A=4 AND (R.B=9 OR R.C=8))) AND R.C=7))'
+        # self.__query = 'SELECT R.A, S.D FROM R, S WHERE ((((R.A=4 AND (R.B=9 OR R.C=8))) AND R.C=7))'
+        self.__showStartMenu()
 
     def __showResult(self, result):
         print("Result After apply Rule is {0}".format(result))
 
-    def __getLegalChoice(self, numberOfOptions):
+    def __getLegalChoice(self, firstIndex, secondIndex):
         while True:
             userChoice = input("Please Choose one from the Above:")
-            if self.__isUserChoiceLegal(userChoice, numberOfOptions):
+            if self.__isUserChoiceLegal(userChoice, firstIndex, secondIndex):
                 break
             else:
-                print("Error Should be in the range({0},{1})".format(1, numberOfOptions))
+                print("Error Should be in the range({0},{1})".format(firstIndex, secondIndex))
         return int(userChoice)
 
     def __showStartMenu(self):
         numberOfParts = len(self.__parts)
         print("---------SQL Optimizer--------")
-        i = 1
-        for part in self.__parts:
-            print("{0}) launch part".format(i))
-            i = i + 1
 
-        userChoice = self.__getLegalChoice(numberOfParts)
-        if userChoice == 1:
-            self.__showPart1()
-        elif userChoice == 2:
-            self.__showPart2()
-        elif userChoice == 3:
-            self.__showPart3()
+        if self.__query is None:
+            print("Set query: ")
+            self.__getQueryFromUser()
+        else:
+            print("{0}) Change query".format(0))
+            for part in self.__parts:
+                print("{0}) launch part".format(part))
+
+            userChoice = self.__getLegalChoice(0, numberOfParts)
+            if userChoice == 0:
+                self.__getQueryFromUser()
+            elif userChoice == 1:
+                self.__showPart1()
+            elif userChoice == 2:
+                self.__showPart2()
+            elif userChoice == 3:
+                self.__showPart3()
 
     def __showPart1(self):
         numberOfOption = len(self.__rules) +1
@@ -79,7 +85,7 @@ class OptimizerUI:
         self.__SetOptimizer(optimizer)
         print(optimizer)
         while True:
-            userChoice = self.__getLegalChoice(numberOfOption)
+            userChoice = self.__getLegalChoice(1, numberOfOption)
             if userChoice == self.__back:
                 break
             else:
@@ -98,17 +104,15 @@ class OptimizerUI:
         input("Press any key to return to menu")
         self.__showStartMenu()
 
-
-
     def __showPart3(self):
-        numberOfOptimizers = 500
+        numberOfOptimizers = 4
         numberOfRandomRulesToApply = 10
         optimizers = self.__getOptimizers(numberOfOptimizers)
-        self.__runRules(optimizers, numberOfRandomRulesToApply)
+        # self.__runRules(optimizers, numberOfRandomRulesToApply)
         for optimizer in optimizers:
-            result = str(optimizer)
-            resultSize = optimizer.getSizeEstimation()
-            print("{0} size = {1}".format(result, resultSize))
+            optimizer.getSizeEstimation()
+            # if res
+            # print("{0} size = {1}".format(result, resultSize))
 
 
         input("Press any key to return to menu")
@@ -116,8 +120,7 @@ class OptimizerUI:
 
     def __SetOptimizer(self, i_Optimizer):
         i_Optimizer.setSchema(self.__fileParser.getFirstSchema(), self.__fileParser.getSecondSchema())
-        userQuery = self.__getQueryFromUser()
-        i_Optimizer.setQuery(userQuery)
+        i_Optimizer.setQuery(self.__query)
 
     def __getOptimizers(self, numberOfOptimizers):
         optimizers = []
@@ -126,7 +129,6 @@ class OptimizerUI:
             self.__SetOptimizer(optimizer)
             optimizers.append(optimizer)
         return optimizers
-
 
     def __runRules(self, optimizers, numberOfRandomRulesToApply):
         results = []
