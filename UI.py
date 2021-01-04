@@ -95,7 +95,7 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __showPart2(self):
-        numberOfOptimizers = 4
+        numberOfOptimizers = 50
         numberOfRandomRulesToApply = 10
         optimizers = self.__getOptimizers(numberOfOptimizers)
         results = self.__runRules(optimizers, numberOfRandomRulesToApply)
@@ -105,10 +105,10 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __showPart3(self):
-        numberOfOptimizers = 4
-        numberOfRandomRulesToApply = 10
+        numberOfOptimizers = 1000
+        numberOfRandomRulesToApply = 50
         optimizers = self.__getOptimizers(numberOfOptimizers)
-        # self.__runRules(optimizers, numberOfRandomRulesToApply)
+        self.__runRules(optimizers, numberOfRandomRulesToApply)
         for optimizer in optimizers:
             optimizer.getSizeEstimation()
             # if res

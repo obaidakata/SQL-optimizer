@@ -124,15 +124,57 @@ class SqlOptimizer:
         self.__buildTree(i_Query)
 
     def __rule11b(self):
+        inter = self.__intersectionBetweenTwoDicts();
         sigmaIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
         if sigmaIndex is not None:
+            sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
+            condition = self.__getSub(sigma, self.__SquareBrackets)
+            conditionList = self.__optimizeCondition(condition)
             cartesianIndex = sigmaIndex.copy()  # self.__getNextOperatorIndex(sigmaIndex)
             cartesianIndex[-1] = cartesianIndex[-1] + 1
-            sigma = self.__getNestedElement(self.__QueryTree, sigmaIndex)
-            self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
-            self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
+            cartesianTablesIndex = cartesianIndex[-1] + 1
+            cartesiainTables = self.__QueryTree[cartesianTablesIndex]
+            if self.__checkIfConditionHasSimilarTables(inter, conditionList, cartesiainTables):
+                self.__getNestedElement(self.__QueryTree, sigmaIndex)
+                self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
+                self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
+            else:
+                self.__log("rule 11b - Columns not similar.")
         else:
             self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
+
+    def __intersectionBetweenTwoDicts(self):
+        return set(self.__Schema["R"].keys()) & set(self.__Schema["S"].keys())
+
+    def __checkIfConditionHasSimilarTables(self, dict, conditionList, tables):
+        for i in conditionList:
+            if i.isdecimal():
+                return False
+            dot = i.split(".")
+            leftDot = dot[0]
+            rightDot = dot[1]
+            if leftDot not in tables:
+                return False
+            if rightDot not in dict:
+                return False
+        return True
+
+    def __optimizeCondition(self, condition):
+        final = []
+        res = []
+        condition = condition.replace("(", "")
+        condition = condition.replace(")", "")
+        condition = condition.replace("AND", "")
+        condition = condition.replace("OR", "")
+        splittedCond = condition.split(" ")
+        for i in splittedCond:
+            i.strip()
+            if i.__contains__("="):
+                final.append(i.split("="))
+        for i in final:
+            for j in i:
+                res.append(j)
+        return res
 
 
 

@@ -83,17 +83,17 @@ class Schema:
         for key in firstSchema.ColumnsNumberOfUniqueValues.keys():
             if not key in secondSchema.ColumnsNumberOfUniqueValues.keys():
                 valueInFirstSchema = firstSchema.ColumnsNumberOfUniqueValues[key]
-                self.ColumnsNumberOfUniqueValues[key] = valueInFirstSchema * secondSchema.RowCount
+                self.ColumnsNumberOfUniqueValues[key] = valueInFirstSchema
             else:
                 # TODO: check if ok
-                valueInFirstSchema = firstSchema.ColumnsNumberOfUniqueValues[key] * firstSchema.RowCount
+                valueInFirstSchema = firstSchema.ColumnsNumberOfUniqueValues[key]
                 valueInSecondSchema = secondSchema.ColumnsNumberOfUniqueValues[key]
-                self.ColumnsNumberOfUniqueValues[key] = valueInFirstSchema * valueInSecondSchema
+                self.ColumnsNumberOfUniqueValues[key] = max(valueInFirstSchema, valueInSecondSchema)
 
         for key in secondSchema.ColumnsNumberOfUniqueValues.keys():
             if not key in firstSchema.ColumnsNumberOfUniqueValues.keys():
                 valueInSecondSchema = secondSchema.ColumnsNumberOfUniqueValues[key]
-                self.ColumnsNumberOfUniqueValues[key] = valueInSecondSchema * firstSchema.RowCount
+                self.ColumnsNumberOfUniqueValues[key] = valueInSecondSchema
 
     @staticmethod
     def applyPi(operator, schema, columnsToKeep):
@@ -139,7 +139,7 @@ class Schema:
             elif "." in element:
                 calculatedProbably = self.__calculateProbability(element)
                 if calculatedProbably is not None:
-                    calculatedProbably = str(math.ceil(calculatedProbably))
+                    calculatedProbably = str(calculatedProbably)
                     conditionAsMath += calculatedProbably
             elif "(" in element or ")" in element:
                 conditionAsMath += element
@@ -147,7 +147,7 @@ class Schema:
         try:
             if conditionAsMath is not "":
                 result = eval(conditionAsMath)
-                self.RowCount = result
+                self.RowCount = math.ceil(result * self.RowCount)
         except SyntaxError:
             print("Can't calculate Condition")
 
@@ -158,11 +158,10 @@ class Schema:
             column = self.__getColumnFromOperand(splitOperand[0])
             if column is not None and column in self.ColumnsNumberOfUniqueValues:
                 if splitOperand[1].isdecimal():
-                    toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
+                    toReturn = 1 / self.ColumnsNumberOfUniqueValues[column]
                 else:
                     secondColumn = self.__getColumnFromOperand(splitOperand[1])
-                    toReturn = self.RowCount / self.ColumnsNumberOfUniqueValues[column]
-                    toReturn *= self.ColumnsNumberOfUniqueValues[secondColumn]
+                    toReturn = 1 / self.ColumnsNumberOfUniqueValues[secondColumn]
         return toReturn
 
     def __getColumnFromOperand(self, operand):
