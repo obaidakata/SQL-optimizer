@@ -139,8 +139,10 @@ class SqlOptimizer:
                 self.__getNestedElement(self.__QueryTree, sigmaIndex)
                 self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
                 self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
-            elif res == 2:
-                self.__log("Rule 11b - Columns not similar.")
+            elif res == 2 or res == 3:
+                self.__log("Rule 11b - Columns are not similar.")
+            else:
+                self.__log("Rule 11b - Decimal number found (should be only columns).")
         else:
             self.__log("Rule 11b - No SIGMA(CARTESIAN()) found")
 
@@ -213,7 +215,7 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                self.__log("Rule 6a With Cartesian - Table{0} is not in condition {1}".format(cartesiainTables[1], condition))
+                self.__log("Rule 6a With Cartesian - Table {0} is not in condition {1}".format(cartesiainTables[1], condition))
         else:
             self.__log("Rule 6a With Cartesian - No SIGMA(CARTESIAN()) found")
 
