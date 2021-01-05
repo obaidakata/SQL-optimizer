@@ -149,7 +149,7 @@ class Schema:
                 result = eval(conditionAsMath)
                 self.RowCount = math.ceil(result * self.RowCount)
         except SyntaxError:
-            print("Can't calculate Condition")
+            print("Eval - Can't calculate Condition")
 
     def __calculateProbability(self, operand):
         toReturn = None

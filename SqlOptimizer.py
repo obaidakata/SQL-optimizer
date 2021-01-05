@@ -134,14 +134,15 @@ class SqlOptimizer:
             cartesianIndex[-1] = cartesianIndex[-1] + 1
             cartesianTablesIndex = cartesianIndex[-1] + 1
             cartesiainTables = self.__QueryTree[cartesianTablesIndex]
-            if self.__checkIfConditionHasSimilarTables(inter, conditionList, cartesiainTables):
+            res = self.__checkIfConditionHasSimilarTables(inter, conditionList, cartesiainTables)
+            if res == 0:
                 self.__getNestedElement(self.__QueryTree, sigmaIndex)
                 self.__replaseNestedElement(self.__QueryTree, sigmaIndex, "NJOIN")
                 self.__replaseNestedElement(self.__QueryTree, cartesianIndex, None)
-            else:
-                self.__log("rule 11b - Columns not similar.")
+            elif res == 2:
+                self.__log("Rule 11b - Columns not similar.")
         else:
-            self.__log("rule 11b - No SIGMA(CARTESIAN()) found")
+            self.__log("Rule 11b - No SIGMA(CARTESIAN()) found")
 
     def __intersectionBetweenTwoDicts(self):
         return set(self.__Schema["R"].keys()) & set(self.__Schema["S"].keys())
@@ -149,15 +150,15 @@ class SqlOptimizer:
     def __checkIfConditionHasSimilarTables(self, dict, conditionList, tables):
         for i in conditionList:
             if i.isdecimal():
-                return False
+                return 1
             dot = i.split(".")
             leftDot = dot[0]
             rightDot = dot[1]
             if leftDot not in tables:
-                return False
+                return 2
             if rightDot not in dict:
-                return False
-        return True
+                return 3
+        return 0
 
     def __optimizeCondition(self, condition):
         final = []
@@ -193,9 +194,9 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                self.__log("Table{0} is not in condtioon {1}".format(cartesiainTables[0], condition))
+                self.__log("Rule 6 With Cartesian - Table{0} is not in condition {1}".format(cartesiainTables[0], condition))
         else:
-            self.__log("rule 6 With Cartesian- No SIGMA(CARTESIAN()) found")
+            self.__log("Rule 6 With Cartesian - No SIGMA(CARTESIAN()) found")
 
     def __rule6AWithCartesian(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "CARTESIAN")
@@ -212,9 +213,9 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                self.__log("Table{0} is not in condtioon {1}".format(cartesiainTables[1], condition))
+                self.__log("Rule 6a With Cartesian - Table{0} is not in condition {1}".format(cartesiainTables[1], condition))
         else:
-            self.__log("rule 6a With Cartesian- No SIGMA(CARTESIAN()) found")
+            self.__log("Rule 6a With Cartesian - No SIGMA(CARTESIAN()) found")
 
     def __removeDuplicatesFromList(self, i_list):
         mylist = list(dict.fromkeys(i_list))
@@ -269,9 +270,9 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                self.__log("Table {0} is not in condtioon {1}".format(nJoinTables[0], condition))
+                self.__log("Rule 6 With Njoin - Table {0} is not in condition {1}".format(nJoinTables[0], condition))
         else:
-            self.__log("rule 6 With Njoin- No SIGMA(NJOIN()) found")
+            self.__log("Rule 6 With Njoin - No SIGMA(NJOIN()) found")
 
     def __rule6AWithNjoin(self):
         res = self.__getOperatorConditionAndOperand(self.__QueryTree, "SIGMA", "NJOIN")
@@ -288,9 +289,9 @@ class SqlOptimizer:
                 toInsert.reverse()
                 self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                self.__log("Table{0} is not in condtioon {1}".format(nJoinTables[1], condition))
+                self.__log("Rule 6  With Njoin - Table {0} is not in condition {1}".format(nJoinTables[1], condition))
         else:
-            self.__log("rule 6 With Njoin - No SIGMA(NJOIN()) found")
+            self.__log("Rule 6  With Njoin - No SIGMA(NJOIN()) found")
 
 
 
@@ -304,7 +305,7 @@ class SqlOptimizer:
             self.__replaseNestedElement(self.__QueryTree, sigmaIndex, secondSigma)
             self.__replaseNestedElement(self.__QueryTree, secondSigmaIndex, firstSigma)
         else:
-            self.__log("Error in rule 4a - NO SIGMA(SIGMA()) found")
+            self.__log("Rule 4a - NO SIGMA(SIGMA()) found")
 
     def __rule5a(self):
         piIndex = self.__getOperatorConditionAndOperand(self.__QueryTree, "PI", "SIGMA")
@@ -320,9 +321,9 @@ class SqlOptimizer:
                 self.__replaseNestedElement(self.__QueryTree, sigmaIndex, pi)
                 self.__replaseNestedElement(self.__QueryTree, piIndex, sigma)
             else:
-                self.__log("Failed in checking condition ")
+                self.__log("Rule 5a - {0} Not contains only {1}".format(sigmaCondition, piCondition))
         else:
-            self.__log("Error in rule 5a - PI(SIGMA)")
+            self.__log("Rule 5a - No PI(SIGMA) found")
 
     def __rule4(self):
         res = self.__findSigmaWithAndCondition(self.__QueryTree)
@@ -341,9 +342,9 @@ class SqlOptimizer:
                     toInsert = [newSigma2, newSigma1]
                     self.__QueryTree = self.insertIntoNestedArray(self.__QueryTree, res, toInsert)
             else:
-                self.__log("Rule 4 no AND found")
+                self.__log("Rule 4 - No AND found")
         else:
-            self.__log("rule 4 - No digma with and")
+            self.__log("Rule 4 - No SIGMA with AND")
 
     def __getMainAndParts(self, condition):
         condition = self.deleteParentheses(condition)
@@ -488,7 +489,7 @@ class SqlOptimizer:
         return True
 
     def __log(self, toLog):
-        # print("{0}) ---------------- {1} ---------------------".format(self.__logNumber, toLog), self)
+        print("{0}) {1} --> ".format(self.__logNumber, toLog), self)
         self.__logNumber = self.__logNumber + 1
 
     def getSizeEstimation(self):

@@ -30,10 +30,7 @@ class OptimizerUI:
         return isLegal
 
     def __getQueryFromUser(self):
-        # self.__query = input("Please Type Your SQL query:")
-        self.__query = 'SELECT R.D, S.E FROM R, S WHERE S.D=4 AND R.A=10'
-        # only equal
-        # self.__query = 'SELECT R.A, S.D FROM R, S WHERE ((((R.A=4 AND (R.B=9 OR R.C=8))) AND R.C=7))'
+        self.__query = input("Please Type Your SQL query:")
         self.__showStartMenu()
 
     def __showResult(self, result):
@@ -83,7 +80,7 @@ class OptimizerUI:
 
         optimizer = SqlOptimizer()
         self.__SetOptimizer(optimizer)
-        print(optimizer)
+        print("LQP --> {0}".format(optimizer))
         while True:
             userChoice = self.__getLegalChoice(1, numberOfOption)
             if userChoice == self.__back:
@@ -95,7 +92,7 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __showPart2(self):
-        numberOfOptimizers = 50
+        numberOfOptimizers = 4
         numberOfRandomRulesToApply = 10
         optimizers = self.__getOptimizers(numberOfOptimizers)
         results = self.__runRules(optimizers, numberOfRandomRulesToApply)
@@ -105,14 +102,12 @@ class OptimizerUI:
         self.__showStartMenu()
 
     def __showPart3(self):
-        numberOfOptimizers = 1000
-        numberOfRandomRulesToApply = 50
+        numberOfOptimizers = 4
+        numberOfRandomRulesToApply = 10
         optimizers = self.__getOptimizers(numberOfOptimizers)
         self.__runRules(optimizers, numberOfRandomRulesToApply)
         for optimizer in optimizers:
             optimizer.getSizeEstimation()
-            # if res
-            # print("{0} size = {1}".format(result, resultSize))
 
 
         input("Press any key to return to menu")
